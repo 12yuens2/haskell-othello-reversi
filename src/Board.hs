@@ -41,8 +41,7 @@ initWorld = World initBoard Black
 -- (e.g. outside the range of the board, there is a piece already there,
 -- or the move does not flip any opposing pieces)
 makeMove :: Board -> Col -> Position -> Maybe Board
-makeMove = undefined
-
+makeMove b c (x,y) = undefined
 -- Check the current score
 -- Returns a pair of the number of black pieces, and the number of
 -- white pieces

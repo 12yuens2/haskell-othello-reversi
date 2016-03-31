@@ -18,12 +18,24 @@ handleInput :: Event -> World -> World
 --handleInput (EventMotion (x, y)) w 
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
 handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) w 
-    = trace ("Left button pressed at: " ++ show (x,y)) w
+    = trace ("Left button pressed at: " ++ show (snapX x, snapY y)) w
 handleInput (EventKey (Char k) Down _ _) w
     = trace ("Key " ++ show k ++ " down") w
 handleInput (EventKey (Char k) Up _ _) w
     = trace ("Key " ++ show k ++ " up") w
 handleInput e w = w
+
+--0, 0 -> 100, 100
+
+--54, 67
+
+--snapX = floor((x + gridPos)/rectSize)
+snapX :: Float -> Int
+snapX x = floor((x + 400.0)/100.0)
+
+--snapY = floor((gridPos - y)/rectSize)
+snapY :: Float -> Int
+snapY y = floor((400.0 - y)/100.0)
 
 {- Hint: when the 'World' is in a state where it is the human player's
  turn to move, a mouse press event should calculate which board position
