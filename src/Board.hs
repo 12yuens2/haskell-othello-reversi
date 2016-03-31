@@ -1,5 +1,7 @@
 module Board where
 
+sizeOfBoard = 8
+
 data Col = Black | White
   deriving Show
 
@@ -20,7 +22,7 @@ data Board = Board { size :: Int,
   deriving Show
 
 -- Default board is 8x8, neither played has passed, with 4 initial pieces 
-initBoard = Board 8 0 [((3,3), Black), ((3, 4), White),
+initBoard = Board sizeOfBoard 0 [((3,3), Black), ((3, 4), White),
                        ((4,3), White), ((4,4), Black)]
 
 -- Overall state is the board and whose turn it is, plus any further
@@ -58,4 +60,8 @@ evaluate :: Board -> Col -> Int
 evaluate = undefined
 
 
+getPosX :: Position -> Float
+getPosX (x,y) = fromIntegral(x)
 
+getPosY :: Position -> Float
+getPosY (x,y) = fromIntegral(y)

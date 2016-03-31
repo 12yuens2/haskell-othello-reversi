@@ -4,6 +4,7 @@ import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss
 import Board
 import AI
+import Draw
 
 import Debug.Trace
 
@@ -14,15 +15,15 @@ import Debug.Trace
 -- 'trace' returns its second argument while printing its first argument
 -- to stderr, which can be a very useful way of debugging!
 handleInput :: Event -> World -> World
-handleInput (EventMotion (x, y)) b 
-    = trace ("Mouse moved to: " ++ show (x,y)) b
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) b 
-    = trace ("Left button pressed at: " ++ show (x,y)) b
-handleInput (EventKey (Char k) Down _ _) b
-    = trace ("Key " ++ show k ++ " down") b
-handleInput (EventKey (Char k) Up _ _) b
-    = trace ("Key " ++ show k ++ " up") b
-handleInput e b = b
+--handleInput (EventMotion (x, y)) w 
+--    = trace ("Mouse moved to: " ++ show (x,y)) w
+handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) w 
+    = trace ("Left button pressed at: " ++ show (x,y)) w
+handleInput (EventKey (Char k) Down _ _) w
+    = trace ("Key " ++ show k ++ " down") w
+handleInput (EventKey (Char k) Up _ _) w
+    = trace ("Key " ++ show k ++ " up") w
+handleInput e w = w
 
 {- Hint: when the 'World' is in a state where it is the human player's
  turn to move, a mouse press event should calculate which board position
