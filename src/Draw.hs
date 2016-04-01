@@ -12,7 +12,7 @@ gridPos = width/2.0
 rectSize = width / (fromIntegral sizeOfBoard)
 pieceSize = (rectSize / 2.0)
 
-
+-- | Translate between our custom 'Col' and the 'Color' needed for drawing
 getCol :: Col -> Color
 getCol Black = black
 getCol White = white
@@ -26,28 +26,30 @@ drawWorld :: World -> Picture
 drawWorld w = boardDrawing w
 
 
---draws entire board
+-- | Draws entire board.
+-- The picture consists of: the background, the grid, the pieces
 boardDrawing :: World -> Picture
 boardDrawing (World (Board size passes pieces) turn) = pictures [background, gridDrawing, (piecesDrawing pieces)]
 
 
---draws a green rectangle as the background
+-- | Draws a green rectangle as the background
 background :: Picture
 background = Color (makeColor8 0 102 51 255) $ rectangleSolid width height
 
 
---draws grid by drawing horizontal and vertical lines
+-- | Draws grid by drawing horizontal and vertical lines
 gridDrawing :: Picture
 gridDrawing = pictures [horizontalDrawing, verticalDrawing]
 
 
---draw pieces given a list of (position, color)
+-- | Draw all pieces given a list of (Position, Col)
 piecesDrawing :: [(Position, Col)] -> Picture
 piecesDrawing [] = Blank
 piecesDrawing (x:xs) = pictures 
 	[ drawPiece (getPosX (fst x)) (getPosY (fst x)) (getCol (snd x))
 	, (piecesDrawing xs)
 	]
+
 
 --map to draw lines for [1..7]
 verticalDrawing :: Picture
@@ -58,20 +60,32 @@ horizontalDrawing = pictures (map drawHorizontal [1.0..7.0])
 
 
 
---drawing individual pieces
-drawPiece :: Float -> Float -> Color -> Picture
+-- | Draw an individual piece (circle)
+drawPiece 	:: Float 	-- ^ x coordinate of the piece
+			-> Float 	-- ^ y coordinate of the piece
+			-> Color 	-- ^ Color of the piece
+			-> Picture 
 drawPiece x y c = translate (guiX x) (guiY y) $ Color c $ circleSolid pieceSize
 
---translates the x and y from board to positions on the gui
+-- | Draw an individual vertical line given an offset
+-- The line is drawn at rectSize*offset
+drawVertial :: Float 	-- ^ The offset where the line is drawn.
+			-> Picture
+drawVertial x = color black (line [(-(gridPos)+(rectSize*x), gridPos), (-(gridPos)+(rectSize*x), -(gridPos)) ])
+
+
+-- | Draw an individual horizontal line given an offset
+-- The line is drawn at rectSize*offset
+drawHorizontal 	:: Float 	-- ^ The offset where the line is drawn.
+				-> Picture
+drawHorizontal y = color black (line [(gridPos, -(gridPos)+(rectSize*y)), (-(gridPos), -(gridPos)+(rectSize*y)) ])
+
+
+
+-- | Translate the x board coordinate to the x coordinate on the gui
 guiX :: Float -> Float
 guiX x = -gridPos + pieceSize + (rectSize*x)
 
+-- | Translate the y board coordinate to the y coordinate on the gui
 guiY :: Float -> Float
 guiY y = gridPos - pieceSize - (rectSize*y)
-
---drawing individual lines
-drawVertial :: Float -> Picture
-drawVertial x = color black (line [(-(gridPos)+(rectSize*x), gridPos), (-(gridPos)+(rectSize*x), -(gridPos)) ])
-
-drawHorizontal :: Float -> Picture
-drawHorizontal x = color black (line [(gridPos, -(gridPos)+(rectSize*x)), (-(gridPos), -(gridPos)+(rectSize*x)) ])

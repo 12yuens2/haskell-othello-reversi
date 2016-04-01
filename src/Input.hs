@@ -30,10 +30,12 @@ handleInput (EventKey (Char k) Up _ _) w
 handleInput e w = w
 
 
+--Snaps the x mouse coordinate to the x grid coordinate
 --snapX = floor((x + gridPos)/rectSize)
 snapX :: Float -> Int
 snapX x = floor((x + 400.0)/100.0)
 
+--Snaps they mouse coordinate to the y grid coordinate
 --snapY = floor((gridPos - y)/rectSize)
 snapY :: Float -> Int
 snapY y = floor((400.0 - y)/100.0)
