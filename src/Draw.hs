@@ -4,6 +4,8 @@ import Graphics.Gloss
 import Board
 import Data.Tuple
 
+import Debug.Trace
+
 width = 800.0
 height = 800.0
 gridPos = width/2.0
@@ -21,12 +23,12 @@ getCol White = white
 -- This will need to extract the Board from the world state and draw it
 -- as a grid plus pieces.
 drawWorld :: World -> Picture
-drawWorld w = boardDrawing
+drawWorld w = boardDrawing w
 
 
 --draws entire board
-boardDrawing :: Picture
-boardDrawing = pictures [background, gridDrawing, (piecesDrawing (pieces initBoard))]
+boardDrawing :: World -> Picture
+boardDrawing (World (Board size passes pieces) turn) = pictures [background, gridDrawing, (piecesDrawing pieces)]
 
 
 --draws a green rectangle as the background
@@ -69,7 +71,7 @@ guiY y = gridPos - pieceSize - (rectSize*y)
 
 --drawing individual lines
 drawVertial :: Float -> Picture
-drawVertial x = color black (line [(-(width/2.0)+(rectSize*x), width/2.0), (-(width/2.0)+(rectSize*x), -(width/2.0)) ])
+drawVertial x = color black (line [(-(gridPos)+(rectSize*x), gridPos), (-(gridPos)+(rectSize*x), -(gridPos)) ])
 
 drawHorizontal :: Float -> Picture
-drawHorizontal x = color black (line [(width/2.0, -(width/2.0)+(rectSize*x)), (-(width/2.0), -(width/2.0)+(rectSize*x)) ])
+drawHorizontal x = color black (line [(gridPos, -(gridPos)+(rectSize*x)), (-(gridPos), -(gridPos)+(rectSize*x)) ])

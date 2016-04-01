@@ -1,5 +1,7 @@
 module Board where
 
+import Debug.Trace
+
 sizeOfBoard = 8
 
 data Col = Black | White
@@ -42,6 +44,9 @@ initWorld = World initBoard Black
 -- or the move does not flip any opposing pieces)
 makeMove :: Board -> Col -> Position -> Maybe Board
 makeMove b c (x,y) = undefined
+
+
+
 -- Check the current score
 -- Returns a pair of the number of black pieces, and the number of
 -- white pieces

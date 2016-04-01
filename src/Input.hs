@@ -17,17 +17,14 @@ import Debug.Trace
 handleInput :: Event -> World -> World
 --handleInput (EventMotion (x, y)) w 
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) w 
-    = trace ("Left button pressed at: " ++ show (snapX x, snapY y)) w
+handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pieces) t)
+    = trace ("Left button pressed at: " ++ show (snapX x, snapY y)) World (Board size (passes+1) (((snapX x, snapY y), t):pieces)) (other t)
 handleInput (EventKey (Char k) Down _ _) w
     = trace ("Key " ++ show k ++ " down") w
 handleInput (EventKey (Char k) Up _ _) w
     = trace ("Key " ++ show k ++ " up") w
 handleInput e w = w
 
---0, 0 -> 100, 100
-
---54, 67
 
 --snapX = floor((x + gridPos)/rectSize)
 snapX :: Float -> Int
