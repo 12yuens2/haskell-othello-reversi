@@ -19,19 +19,19 @@ data GameTree = GameTree { game_board :: Board,
 -- Rather than generating every possible move (which would result in an
 -- unmanageably large game tree!) it could, for example, generate moves
 -- according to various simpler strategies.
-buildTree :: (Board -> Col -> [Position]) -- ^ Move generator
-             -> Board -- ^ board state
-             -> Col -- ^ player to play next
-             -> GameTree
-buildTree gen b c = let moves = gen b c in -- generated moves
-                        GameTree b c (mkNextStates moves)
-  where
-    mkNextStates :: [Position] -> [(Position, GameTree)]
-    mkNextStates [] = []
-    mkNextStates (pos : xs)
-        = case makeMove b c pos of -- try making the suggested move
-               Nothing -> mkNextStates xs -- not successful, no new state
-               Just b' -> (pos, buildTree gen b' (other c)) : mkNextStates xs
+--buildTree :: (Board -> Col -> [Position]) -- ^ Move generator
+--             -> Board -- ^ board state
+--             -> Col -- ^ player to play next
+--             -> GameTree
+--buildTree gen b c = let moves = gen b c in -- generated moves
+--                        GameTree b c (mkNextStates moves)
+--  where
+--    mkNextStates :: [Position] -> [(Position, GameTree)]
+--    mkNextStates [] = []
+--    mkNextStates (pos : xs)
+--        = case makeMove b pos c of -- try making the suggested move
+--               Nothing -> mkNextStates xs -- not successful, no new state
+--               Just b' -> (pos, buildTree gen b' (other c)) : mkNextStates xs
                              -- successful, make move and build tree from 
                              -- here for opposite player
 
