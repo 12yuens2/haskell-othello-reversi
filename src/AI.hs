@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiWayIf #-}
+
 module AI where
 
 import Board
@@ -59,21 +61,19 @@ getBestMove depth tree = fst(head (next_moves tree))
 updateWorld :: Float -- ^ time since last update (you can ignore this)
             -> World -- ^ current world state
             -> World
-updateWorld t World {board = b, turn = c} | c == White = let
+updateWorld t World {board = b, turn = c} | gameOver b = let (x,y) = checkScore b
+                                                             result | x == y    = error "The game is a draw!"
+                                                                    | x > y     = error "Black wins!"
+                                                                    | otherwise = error "White wins!"
+                                                             in result
+                                          | c == Black && validMovesAvailable b c = World b {passes = 0} c
+                                          | c == White && validMovesAvailable b c = let
                                             tree = buildTree genAllMoves b c
                                             nextMove = getBestMove 0 tree in
                                               case makeMove b nextMove c of
                                                   Nothing -> error("not possible moves not implemented")
                                                   Just b' -> (World b' (other c))
-                                          |gameOver b = let 
-                                            (x,y) = checkScore b in
-                                            if x == y 
-                                              then error "The game is a draw!"
-                                              else if x > y 
-                                                then error "Black wins!"
-                                                else error "White wins!"
-                                          | validMovesAvailable b c = World b c
-                                          | otherwise               = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c)
+                                          | otherwise  = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c)
 
 
 

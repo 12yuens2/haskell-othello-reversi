@@ -46,14 +46,13 @@ initWorld = World initBoard Black
 validMovesAvailable :: Board -> Col -> Bool
 validMovesAvailable b c = checkAvailable b (0,0) c
 
-checkAvailable b (x, y) c | x==(sizeOfBoard-1) && y==(sizeOfBoard-1)    = isValidMove b (x,y) c
-                          | y==(sizeOfBoard-1) && isValidMove b (x,y) c = True
+checkAvailable b (x, y) c | (not (containsPiece b (x,y))) && (isValidMove b (x, y) c) = True
+                          | x==(sizeOfBoard-1) && y==(sizeOfBoard-1)    = False
                           | y==(sizeOfBoard-1)                          = checkAvailable b (x+1, 0) c
-                          | isValidMove b (x, y) c                      = True
                           | otherwise                                   = checkAvailable b (x,y+1) c
 
 isValidMove :: Board -> Position -> Col -> Bool
-isValidMove b (x,y) c = length (getPosList b (x,y) c) /= 0
+isValidMove b (x,y) c = (length (getPosList b (x,y) c)) /= 0
 
 getPosList :: Board -> Position -> Col -> [Position]
 getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList  
