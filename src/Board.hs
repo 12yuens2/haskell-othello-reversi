@@ -70,32 +70,11 @@ getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ s
 -- | Play a move on the board; return 'Nothing' if the move is invalid
 -- (e.g. outside the range of the board, there is a piece already there, or the move does not flip any opposing pieces)
 makeMove :: Board -> Position -> Col -> Maybe Board
-<<<<<<< HEAD
-makeMove b (x,y) c = if (containsPiece b (x,y)) 
-	then Nothing -- if a piece if already at that location
-	else let
-		--create list for flipping by checking every direction
-		nList = checkFlips []  b (x,y) (0, -1) c
-		eList = checkFlips []  b (x,y) (1, 0) c
-		sList = checkFlips []  b (x,y) (0, 1) c
-		wList = checkFlips []  b (x,y) (-1, 0) c
-		nwList = checkFlips []  b (x,y) (-1, -1) c
-		neList = checkFlips []  b (x,y) (1, -1) c
-		swList = checkFlips []  b (x,y) (-1, 1) c
-		seList = checkFlips []  b (x,y) (1, 1) c
-		flipList = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList 
-
-		in if length(flipList) == 0 
-			then Nothing -- if the move flips no opposing pieces
-			else Just (flipping (Board (size b) ((passes b)+1) (((x,y),c):(pieces b))) flipList)
-=======
 makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
                    | length posList == 0     = Nothing
                    | otherwise               = Just (flipping (Board (size b) (passes b) (((x,y),c):(pieces b))) posList)
                    where
                        posList = getPosList b (x,y) c
-
->>>>>>> 00d02997adda260567839b628e08d720726a3657
 
 -- | Flips all the pieces in the given list of 'Position's
 flipping :: Board -> [Position] -> Board
