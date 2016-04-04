@@ -149,7 +149,7 @@ gameOver Board {pieces = x} | (length x) > (sizeOfBoard ^ 2) = False
 evaluate :: Board -> Col -> Int
 evaluate Board {pieces = []}                _       = 0
 evaluate Board {pieces = ((_, colour1):xs)} colour2  
-                       | colour1 == colour2 = (evaluate (Board sizeOfBoard 0 xs) colour1) + 1
+                       | colour1 == colour2 = (evaluate (Board sizeOfBoard 0 xs) colour2) + 1
                        | otherwise          = evaluate (Board sizeOfBoard 0 xs) colour2
 
 
