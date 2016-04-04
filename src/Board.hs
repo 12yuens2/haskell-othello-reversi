@@ -36,29 +36,46 @@ initBoard = Board sizeOfBoard 0 [((3,3), Black), ((3,4), White),
 -- will be useful (information for the AI, for example, such as where the
 -- most recent moves were).
 data World = World { board :: Board,
-                     turn :: Col }
+                     turn :: Col
+                     }
+
 
 initWorld = World initBoard Black
+
+
+validMovesAvailable :: Board -> Col -> Bool
+validMovesAvailable b c = checkAvailable b (0,0) c
+
+checkAvailable b (x, y) c | x==(sizeOfBoard-1) && y==(sizeOfBoard-1)    = isValidMove b (x,y) c
+                          | y==(sizeOfBoard-1) && isValidMove b (x,y) c = True
+                          | y==(sizeOfBoard-1)                          = checkAvailable b (x+1, 0) c
+                          | isValidMove b (x, y) c                      = True
+                          | otherwise                                   = checkAvailable b (x,y+1) c
+
+isValidMove :: Board -> Position -> Col -> Bool
+isValidMove b (x,y) c = length (getPosList b (x,y) c) /= 0
+
+getPosList :: Board -> Position -> Col -> [Position]
+getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList  
+                       where
+                           nList  = checkFlips []  b (x,y) (0, -1)  c
+                           eList  = checkFlips []  b (x,y) (1, 0)   c
+                           sList  = checkFlips []  b (x,y) (0, 1)   c
+                           wList  = checkFlips []  b (x,y) (-1, 0)  c
+                           nwList = checkFlips []  b (x,y) (-1, -1) c
+                           neList = checkFlips []  b (x,y) (1, -1)  c
+                           swList = checkFlips []  b (x,y) (-1, 1)  c
+                           seList = checkFlips []  b (x,y) (1, 1)   c
 
 -- | Play a move on the board; return 'Nothing' if the move is invalid
 -- (e.g. outside the range of the board, there is a piece already there, or the move does not flip any opposing pieces)
 makeMove :: Board -> Position -> Col -> Maybe Board
-makeMove b (x,y) c = if (containsPiece b (x,y)) 
-	then Nothing
-	else let
-		nList = checkFlips []  b (x,y) (0, -1) c
-		eList = checkFlips []  b (x,y) (1, 0) c
-		sList = checkFlips []  b (x,y) (0, 1) c
-		wList = checkFlips []  b (x,y) (-1, 0) c
-		nwList = checkFlips []  b (x,y) (-1, -1) c
-		neList = checkFlips []  b (x,y) (1, -1) c
-		swList = checkFlips []  b (x,y) (-1, 1) c
-		seList = checkFlips []  b (x,y) (1, 1) c
-		posList = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList 
+makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
+                   | length posList == 0     = Nothing
+                   | otherwise               = Just (flipping (Board (size b) (passes b) (((x,y),c):(pieces b))) posList)
+                   where
+                       posList = getPosList b (x,y) c
 
-		in if length(posList) == 0 
-			then Nothing
-			else Just (flipping (Board (size b) ((passes b)+1) (((x,y),c):(pieces b))) posList)
 
 -- | Flips all the pieces in the given list of 'Position's
 flipping :: Board -> [Position] -> Board
@@ -141,7 +158,7 @@ checkScore b = (evaluate b Black, evaluate b White)
 -- (that is, either the board is full or there have been two consecutive passes)
 gameOver :: Board -> Bool
 gameOver Board {passes = 2} = True
-gameOver Board {pieces = x} | (length x) > (sizeOfBoard ^ 2) = False
+gameOver Board {pieces = x} | (length x) < (sizeOfBoard ^ 2) = False
                             | otherwise                      = True
 
 -- | An evaluation function for a minimax search. 
@@ -151,7 +168,6 @@ evaluate Board {pieces = []}                _       = 0
 evaluate Board {pieces = ((_, colour1):xs)} colour2  
                        | colour1 == colour2 = (evaluate (Board sizeOfBoard 0 xs) colour2) + 1
                        | otherwise          = evaluate (Board sizeOfBoard 0 xs) colour2
-
 
 
 getPosX :: Position -> Float

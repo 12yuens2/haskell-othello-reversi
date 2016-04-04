@@ -48,7 +48,13 @@ getBestMove = undefined
 updateWorld :: Float -- ^ time since last update (you can ignore this)
             -> World -- ^ current world state
             -> World
-updateWorld t w = w
+updateWorld t World {board = b, turn = c} | gameOver b = do let (x,y) = checkScore b
+                                                            if x == y then error "The game is a draw!"
+                                                             else if x > y then error "Black wins!"
+                                                              else error "White wins!"
+                                          | validMovesAvailable b c = World b c
+                                          | otherwise               = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c)
+                                                           
 
 
 {- Hint: 'updateWorld' is where the AI gets called. If the world state

@@ -19,7 +19,7 @@ handleInput :: Event -> World -> World
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
 handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pieces) t)
 	= case (makeMove (Board size passes pieces) (snapX x, snapY y) t) of
-		Just b -> trace ("Left button pressed at: " ++ show (snapX x, snapY y)) World b (other t)
+		Just b  -> trace ("Left button pressed at: " ++ show (snapX x, snapY y)) World b (other t)
 		Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX x, snapY y)) (World (Board size passes pieces) t)
 
     -- = trace ("Left button pressed at: " ++ show (snapX x, snapY y)) World (Board size (passes+1) (((snapX x, snapY y), t):pieces)) (other t)
