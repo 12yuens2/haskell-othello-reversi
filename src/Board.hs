@@ -25,7 +25,7 @@ data Board = Board { size :: Int,
 
 -- Default board is 8x8, neither played has passed, with 4 initial pieces 
 initBoard = Board sizeOfBoard 0 [((3,3), Black), ((3,4), White),
-                       ((4,3), White), ((4,4), Black)]
+                                 ((4,3), White), ((4,4), Black)]
 
 
 -- Overall state is the board and whose turn it is, plus any further
@@ -135,17 +135,22 @@ posZipY (x:xs) y = (x,y):(posZipY xs y)
 -- | Check the current score
 -- Returns a pair of the number of black pieces, and the number of white pieces
 checkScore :: Board -> (Int, Int)
-checkScore = undefined
+checkScore b = (evaluate b Black, evaluate b White) 
 
 -- | Return true if the game is complete 
 -- (that is, either the board is full or there have been two consecutive passes)
 gameOver :: Board -> Bool
-gameOver = undefined
+gameOver Board {passes = 2} = True
+gameOver Board {pieces = x} | (length x) > (sizeOfBoard ^ 2) = False
+                            | otherwise                      = True
 
 -- | An evaluation function for a minimax search. 
 -- Given a board and a colour return an integer indicating how good the board is for that colour.
 evaluate :: Board -> Col -> Int
-evaluate = undefined
+evaluate Board {pieces = []}                _       = 0
+evaluate Board {pieces = ((_, colour1):xs)} colour2  
+                       | colour1 == colour2 = (evaluate (Board sizeOfBoard 0 xs) colour1) + 1
+                       | otherwise          = evaluate (Board sizeOfBoard 0 xs) colour2
 
 
 

@@ -17,10 +17,10 @@ version :: Version
 version = Version {versionBranch = [0,1,0,0], versionTags = []}
 bindir, libdir, datadir, libexecdir :: FilePath
 
-bindir     = "/cs/home/sy35/.cabal/bin"
-libdir     = "/cs/home/sy35/.cabal/lib/Othello-0.1.0.0/ghc-7.6.3"
-datadir    = "/cs/home/sy35/.cabal/share/Othello-0.1.0.0"
-libexecdir = "/cs/home/sy35/.cabal/libexec"
+bindir     = "/cs/home/imb3/.cabal/bin"
+libdir     = "/cs/home/imb3/.cabal/lib/Othello-0.1.0.0/ghc-7.6.3"
+datadir    = "/cs/home/imb3/.cabal/share/Othello-0.1.0.0"
+libexecdir = "/cs/home/imb3/.cabal/libexec"
 
 getBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath
 getBinDir = catchIO (getEnv "Othello_bindir") (\_ -> return bindir)
