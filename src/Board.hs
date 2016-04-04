@@ -44,8 +44,9 @@ initWorld = World initBoard Black
 -- (e.g. outside the range of the board, there is a piece already there, or the move does not flip any opposing pieces)
 makeMove :: Board -> Position -> Col -> Maybe Board
 makeMove b (x,y) c = if (containsPiece b (x,y)) 
-	then Nothing
+	then Nothing -- if a piece if already at that location
 	else let
+		--create list for flipping by checking every direction
 		nList = checkFlips []  b (x,y) (0, -1) c
 		eList = checkFlips []  b (x,y) (1, 0) c
 		sList = checkFlips []  b (x,y) (0, 1) c
@@ -54,11 +55,11 @@ makeMove b (x,y) c = if (containsPiece b (x,y))
 		neList = checkFlips []  b (x,y) (1, -1) c
 		swList = checkFlips []  b (x,y) (-1, 1) c
 		seList = checkFlips []  b (x,y) (1, 1) c
-		posList = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList 
+		flipList = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList 
 
-		in if length(posList) == 0 
-			then Nothing
-			else Just (flipping (Board (size b) ((passes b)+1) (((x,y),c):(pieces b))) posList)
+		in if length(flipList) == 0 
+			then Nothing -- if the move flips no opposing pieces
+			else Just (flipping (Board (size b) ((passes b)+1) (((x,y),c):(pieces b))) flipList)
 
 -- | Flips all the pieces in the given list of 'Position's
 flipping :: Board -> [Position] -> Board
