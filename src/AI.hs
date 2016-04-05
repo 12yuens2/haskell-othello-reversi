@@ -67,6 +67,7 @@ updateWorld t World {board = b, turn = c} | gameOver b = let (x,y) = checkScore 
                                                                     | otherwise = error "White wins!"
                                                              in result
                                           | c == Black && validMovesAvailable b c = World b {passes = 0} c
+                                          -- Need to make sure AI sets passes to 0
                                           | c == White && validMovesAvailable b c = let
                                             tree = buildTree genAllMoves b c
                                             nextMove = getBestMove 0 tree in
