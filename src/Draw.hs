@@ -29,7 +29,11 @@ drawWorld w = boardDrawing w
 -- | Draws entire board.
 -- The picture consists of: the background, the grid, the pieces
 boardDrawing :: World -> Picture
-boardDrawing (World (Board size passes pieces) turn) = pictures [background, gridDrawing, (piecesDrawing pieces)]
+boardDrawing (World (Board size passes pieces) turn) = pictures [background, 
+                                                                 validDrawing (checkAvailable (Board size passes pieces) (0,0) turn),
+                                                                 gridDrawing,
+                                                                 (piecesDrawing pieces)
+                                                                ]
 
 
 -- | Draws a green rectangle as the background
@@ -67,18 +71,41 @@ drawPiece 	:: Float 	-- ^ x coordinate of the piece
 			-> Picture 
 drawPiece x y c = translate (guiX x) (guiY y) $ Color c $ circleSolid pieceSize
 
+-- | Highlights all valid moves
+validDrawing :: [Position]  -- ^ The positions of valid moves to be highlighted
+             -> Picture
+validDrawing [] = Blank
+validDrawing (x:xs) = pictures [drawValid (getPosX x) (getPosY x), (validDrawing xs)]
+
+-- | Draws a square highlighting a valid ove
+drawValid  :: Float   -- ^ x coordinate of valid square
+           -> Float   -- ^ y coordinate of valid square
+           -> Picture
+drawValid x y = (color rose (polygon [(squarePosX x, squarePosY y), (squarePosX (x+1), squarePosY y), (squarePosX (x+1), squarePosY (y+1)), (squarePosX x, squarePosY (y+1))])) 
+
+-- | converts an x position to an x position on the GUI for squares
+squarePosX :: Float -- ^ The position to be converted
+           -> Float -- ^ Returns the converted position
+squarePosX x = -gridPos + (rectSize * x) 
+
+-- | converts an y position to an y position on the GUI for squares
+squarePosY :: Float -- ^ The position to be converted 
+           -> Float -- ^ Returns the converted position
+squarePosY y = gridPos - (rectSize * y) 
+
+
 -- | Draw an individual vertical line given an offset
 -- The line is drawn at rectSize*offset
 drawVertial :: Float 	-- ^ The offset where the line is drawn.
 			-> Picture
-drawVertial x = color black (line [(-(gridPos)+(rectSize*x), gridPos), (-(gridPos)+(rectSize*x), -(gridPos)) ])
+drawVertial x = color black (line [((squarePosX x), gridPos), ((squarePosX x), -(gridPos)) ])
 
 
 -- | Draw an individual horizontal line given an offset
 -- The line is drawn at rectSize*offset
 drawHorizontal 	:: Float 	-- ^ The offset where the line is drawn.
 				-> Picture
-drawHorizontal y = color black (line [(gridPos, -(gridPos)+(rectSize*y)), (-(gridPos), -(gridPos)+(rectSize*y)) ])
+drawHorizontal y = color black (line [(gridPos, (squarePosY y)), (-(gridPos), (squarePosY y)) ])
 
 
 

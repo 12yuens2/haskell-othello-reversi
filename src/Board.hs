@@ -42,19 +42,37 @@ data World = World { board :: Board,
 
 initWorld = World initBoard Black
 
+-- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable
+validMovesAvailable :: Board  -- ^ The board to be checked
+                    -> Col    -- ^ The colour to be checked for valid moves
+                    -> Bool   -- ^ Returns False if there are no valid moves and True otherwise
+validMovesAvailable b c = (length (checkAvailable b (0,0) c)) /= 0
 
-validMovesAvailable :: Board -> Col -> Bool
-validMovesAvailable b c = checkAvailable b (0,0) c
-
-checkAvailable b (x, y) c | (not (containsPiece b (x,y))) && (isValidMove b (x, y) c) = True
-                          | x==(sizeOfBoard-1) && y==(sizeOfBoard-1)    = False
+-- | Loops through board checking if there are any valid moves
+checkAvailable :: Board      -- ^ The board to be checked
+               -> Position   -- ^ The position to be checked
+               -> Col        -- ^ The colour for checking whether this position would be a valid move
+               -> [Position] -- ^ Returns True if a valid move is found and False otherwise
+checkAvailable b (x, y) c | x==(sizeOfBoard-1) && y==(sizeOfBoard-1) && isValidMove b (x,y) c = [(x,y)]
+                          | x==(sizeOfBoard-1) && y==(sizeOfBoard-1)    = []
+                          | y==(sizeOfBoard-1) && isValidMove b (x,y) c = ((x,y):(checkAvailable b (x+1,0) c))
                           | y==(sizeOfBoard-1)                          = checkAvailable b (x+1, 0) c
+                          | isValidMove b (x,y) c                       = ((x,y):(checkAvailable b (x,y+1) c))
                           | otherwise                                   = checkAvailable b (x,y+1) c
 
-isValidMove :: Board -> Position -> Col -> Bool
-isValidMove b (x,y) c = (length (getPosList b (x,y) c)) /= 0
+-- | Checks if a move is valid (it will actually flip some pieces)
+isValidMove :: Board  -- ^ The board to be checked 
+         -> Position  -- ^ The position the move will place a piece 
+         -> Col       -- ^ The colour of the piece being placed
+         -> Bool      -- ^ Returns True if move is valid and False otherwise
+isValidMove b (x,y) c = (not (containsPiece b (x,y))) && ((length (getPosList b (x,y) c)) /= 0)
 
-getPosList :: Board -> Position -> Col -> [Position]
+-- | Gets a list of positions of pieces that will be flipped if a piece of the 
+--   specified colour is places in the specified position
+getPosList :: Board      -- ^ The board to check
+           -> Position   -- ^ The position the piece is to be placed
+           -> Col        -- ^ The colour of the piece being played
+           -> [Position] -- ^ Returns a list of pieces that will be flipped
 getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList  
                        where
                            nList  = checkFlips []  b (x,y) (0, -1)  c
