@@ -50,12 +50,14 @@ buildTree gen b c = let moves = gen b c in -- generated moves
 -- traverse the game tree up to a certain depth, and pick the move which
 -- leads to the position with the best score for the player whose turn it
 -- is at the top of the game tree.
-getBestMove :: Int -- ^ Maximum search depth
+
+-- | Have Yusuki (the greatest Othello player in the world) make a move.
+yusukiMove :: Int -- ^ Maximum search depth
             -> GameTree -- ^ Initial game tree
             -> Position
-getBestMove (-1) tree = fst (head (next_moves tree))
-getBestMove 0 (GameTree b c []) = undefined
-getBestMove depth (GameTree b c next_moves) = trace ("makeing best move possible") $ 
+yusukiMove (-1) tree = fst (head (next_moves tree))
+yusukiMove 0 (GameTree b c []) = undefined
+yusukiMove depth (GameTree b c next_moves) = trace ("makeing best move possible") $ 
     bestPos depth c next_moves 
     where
       --snd $ maximum [(value, pos) | value <- evaluate ((makeMove b ) c), pos <- next_poss]
@@ -73,7 +75,7 @@ getBestMove depth (GameTree b c next_moves) = trace ("makeing best move possible
       --        _ | x > value -> trace ("found better move" ++ show(x,p) ++ " better than " ++ show(value, pos)) $ bestPos (p, x) b c ps
       --        _ | otherwise -> bestPos (pos, value) b c ps
 
---getBestMove depth (GameTree b c ms) =         
+--yusukiMove depth (GameTree b c ms) =         
 
 childrenList :: Int -> [(Position, GameTree)] -> Col -> [(Int, Position)]
 childrenList _ [] _ = []
@@ -92,7 +94,7 @@ makeList [] c = []
 makeList ((_, GameTree {game_board = b}):xs) c = (evaluate b c):(makeList xs c)
 
 getAverage :: [Int] -> Int
-getAverage [] = 0
+getAverage [] = -64
 getAverage list = sum list `div` length list
 
 evaluateChildren  :: Int -- ^ Depth 
@@ -109,8 +111,8 @@ mapEvaluate depth ((p, tree):xs) c = trace ("evluating... move " ++ show(p)++ "a
 
 
 
---getBestMove 0 gametree = --get best score and return up the tree
---getBestMove depth gametree = undefined --keep going down to the given depth
+--yusukiMove 0 gametree = --get best score and return up the tree
+--yusukiMove depth gametree = undefined --keep going down to the given depth
 
 -- Update the world state after some time has passed
 updateWorld :: Float -- ^ time since last update (you can ignore this)
@@ -124,19 +126,19 @@ updateWorld t World {board = b, turn = c} | gameOver b = let (x,y) = checkScore 
                                           --Testing AI
                                           --Black is first move AI
                                           --White is look at best move for that turn
-                                          | c == Black && validMovesAvailable b c = 
-                                            --let 
-                                            --tree = buildTree genAllMoves b c
-                                            --nextMove = getBestMove (-1) tree in
-                                            --  case makeMove b nextMove c of
-                                            --      Nothing -> error("not possible moves not implemented")
-                                            --      Just b' -> (World (b' {passes = 0}) (other c))
-                                            World b {passes = 0} c
+                                          | c == Black && validMovesAvailable b c = let
+                                            tree = buildTree genAllMoves b c
+                                            nextMove = yusukiMove 2 tree in
+                                              case makeMove b nextMove c of
+                                                  Nothing -> error("not possible moves not implemented")
+                                                  Just b' -> (World (b' {passes = 0}) (other c))
+                                            
+                                            --World b {passes = 0} c
 
                                           -- Need to make sure AI sets passes to 0
                                           | c == White && validMovesAvailable b c = let
                                             tree = buildTree genAllMoves b c
-                                            nextMove = getBestMove 6 tree in
+                                            nextMove = yusukiMove 4 tree in
                                               case makeMove b nextMove c of
                                                   Nothing -> error("not possible moves not implemented")
                                                   Just b' -> (World (b' {passes = 0}) (other c))
