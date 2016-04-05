@@ -98,7 +98,7 @@ flipPiece (((x,y),c):pieces) (newX, newY)
 
 
 
--- | Checks the board or any pieces that would be flipped 
+-- | Checks the board for any pieces that would be flipped 
 checkFlips 	:: [Position] 	-- ^ The list of positions that have pieces to be flipped
 			-> Board 		-- ^ The 'Board' to check if positions contain pieces and the colours of pieces
 			-> Position 	-- ^ The 'Position' where the move has been made

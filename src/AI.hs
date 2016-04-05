@@ -52,7 +52,20 @@ buildTree gen b c = let moves = gen b c in -- generated moves
 getBestMove :: Int -- ^ Maximum search depth
             -> GameTree -- ^ Initial game tree
             -> Position
+getBestMove 0 (GameTree b c []) = undefined
+getBestMove 0 (GameTree b c ms) = 
+  let next_poss = map fst ms in
+    bestPos (fst next_poss) b c next_poss  
+    where
+      bestPos :: Int -> Board -> Col -> [Position] -> Position
+      bestPos best_pos b c [] = best_pos
+      bestPos s b c (p:ps) = case makeMove b p c of
+          Nothing -> error("Couldn't get best move")
+          Just b' -> bestPos (evaluate b' c) b c ps
+
 getBestMove depth tree = fst(head (next_moves tree))
+
+
 
 --getBestMove 0 gametree = --get best score and return up the tree
 --getBestMove depth gametree = undefined --keep going down to the given depth
