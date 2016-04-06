@@ -18,9 +18,9 @@ handleInput :: Event -> World -> World
 --handleInput (EventMotion (x, y)) w 
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
 handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pieces) t sts bt wt v)
-    = case (makeMove (Board size passes pieces) (snapX x, snapY y) t) of
-        Just b  -> trace ("Left button pressed at: " ++ show (snapX x, snapY y)) (World b (other t) (((Board size passes pieces),t):sts) bt wt v)
-        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX x, snapY y)) (World (Board size passes pieces) t sts bt wt v)
+    = case (makeMove (Board size passes pieces) (snapX size x, snapY size y) t) of
+        Just b  -> trace ("Left button pressed at: " ++ show (snapX size x, snapY size y)) (World b (other t) (((Board size passes pieces),t):sts) bt wt v)
+        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX size x, snapY size y)) (World (Board size passes pieces) t sts bt wt v)
 handleInput (EventKey (Char 'u') Down _ _) w
     = undoTurn w
 handleInput (EventKey (Char k) Down _ _) w
@@ -32,13 +32,13 @@ handleInput e w = w
 
 --Snaps the x mouse coordinate to the x grid coordinate
 --snapX = floor((x + gridPos)/rectSize)
-snapX :: Float -> Int
-snapX x = floor((x + 400.0)/100.0)
+snapX :: Int -> Float -> Int
+snapX s x = floor((x + gridPos)/(rectSize s))
 
 --Snaps they mouse coordinate to the y grid coordinate
 --snapY = floor((gridPos - y)/rectSize)
-snapY :: Float -> Int
-snapY y = floor((400.0 - y)/100.0)
+snapY :: Int -> Float -> Int
+snapY s y = floor((gridPos - y)/(rectSize s))
 
 {- Hint: when the 'World' is in a state where it is the human player's
  turn to move, a mouse press event should calculate which board position

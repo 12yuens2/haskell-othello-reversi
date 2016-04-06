@@ -4,7 +4,7 @@ import System.Environment
 
 import Debug.Trace
 
-sizeOfBoard = 8
+defaultBoardSize = 8
 
 data Col = Black | White
   deriving (Show, Eq)
@@ -26,8 +26,8 @@ data Board = Board { size :: Int,
   deriving Show
 
 -- Default board is 8x8, neither played has passed, with 4 initial pieces 
-initBoard = Board sizeOfBoard 0 [((3,3), Black), ((3,4), White),
-                                 ((4,3), White), ((4,4), Black)]
+initBoard = Board defaultBoardSize 0 [((3,3), Black), ((3,4), White),
+                                      ((4,3), White), ((4,4), Black)]
 
 -- | PlayerType represents whether the player is Human or AI (more types
 -- can be added in future for different AI types)
@@ -53,7 +53,17 @@ data World = World { board :: Board,
 -- | initialises the world based on the arguments passed to it
 initWorld :: [String]  -- ^ List of command line arguments
           -> World     -- ^ Returns initialised world
-initWorld args = setArgs args (World initBoard Black [] Human Human False)
+initWorld args = setBasePositions (setArgs args (World initBoard Black [] Human Human False))
+
+-- | Sets 4 starting positions in world boars 
+setBasePositions :: World  -- ^ The world to set positions in 
+                 -> World  -- ^ Returns world updated with updated positoins
+setBasePositions (World (Board sz ps _) t sts bt wt v)
+                 = let mid = div sz 2 in
+                       World (Board sz ps 
+                             [((mid-1,mid-1), Black), ((mid-1,mid), White),
+                             ((mid,mid-1), White), ((mid,mid), Black)]) 
+                             t sts bt wt v
 
 
 -- | Takes a default world from initWorld and alters it depending on arguments
@@ -61,10 +71,24 @@ setArgs :: [String]  -- ^ List of command line arguments
         -> World     -- ^ The world to alter depending on flags
         -> World     -- ^ Returns a world updated depending on flags
 setArgs [] w = w
-setArgs (x:xs) w | x == "-ab" = w {bType = AI}
-                 | x == "-aw" = w {wType = AI}
-                 | x == "-v"  = w {showValid = True}
-                 | otherwise  = error ("Unrecognised flag: " ++ x)
+setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v) 
+                    | xs == [] = error "A number is required after -s flag to determine size of board"
+                    | readResult == [] = error "An integer is required after the -s flag"
+                    | (snd (head readResult)) == "" = 
+                        let val = (fst (head readResult))
+                            result | val < 4   = error "Grid must be at least 4x4"
+                                   | val > 20  = error "Grid cannot be larger than 20x20"
+                                   | odd val   = error "Grid width must be even"
+                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt v)
+                            in result
+                    | otherwise = error "An integer is required after -s"
+                        where readResult = (reads (head xs)) :: [(Int, String)]
+                      
+setArgs ("-ab":xs) w = setArgs xs (w {bType = AI})
+setArgs ("-aw":xs) w = setArgs xs (w {wType = AI})
+setArgs ("-v":xs)  w = setArgs xs (w {showValid = True})
+setArgs (x:xs)     _ = error ("Unrecognised flag: " ++ x)
+
 
 -- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable
 validMovesAvailable :: Board  -- ^ The board to be checked
@@ -77,10 +101,10 @@ checkAvailable :: Board      -- ^ The board to be checked
                -> Position   -- ^ The position to be checked
                -> Col        -- ^ The colour for checking whether this position would be a valid move
                -> [Position] -- ^ Returns True if a valid move is found and False otherwise
-checkAvailable b (x, y) c | x==(sizeOfBoard-1) && y==(sizeOfBoard-1) && isValidMove b (x,y) c = [(x,y)]
-                          | x==(sizeOfBoard-1) && y==(sizeOfBoard-1)    = []
-                          | y==(sizeOfBoard-1) && isValidMove b (x,y) c = ((x,y):(checkAvailable b (x+1,0) c))
-                          | y==(sizeOfBoard-1)                          = checkAvailable b (x+1, 0) c
+checkAvailable b (x, y) c | x==(size b - 1) && y==(size b - 1) && isValidMove b (x,y) c = [(x,y)]
+                          | x==(size b - 1) && y==(size b - 1)    = []
+                          | y==(size b - 1) && isValidMove b (x,y) c = ((x,y):(checkAvailable b (x+1,0) c))
+                          | y==(size b - 1)                          = checkAvailable b (x+1, 0) c
                           | isValidMove b (x,y) c                       = ((x,y):(checkAvailable b (x,y+1) c))
                           | otherwise                                   = checkAvailable b (x,y+1) c
 
@@ -198,16 +222,16 @@ checkScore b = (evaluate b Black, evaluate b White)
 -- (that is, either the board is full or there have been two consecutive passes)
 gameOver :: Board -> Bool
 gameOver Board {passes = 2} = True
-gameOver Board {pieces = x} | (length x) < (sizeOfBoard ^ 2) = False
-                            | otherwise                      = True
+gameOver Board {pieces = x, size = s} | (length x) < (s ^ 2) = False
+                                      | otherwise            = True
 
 -- | An evaluation function for a minimax search. 
 -- Given a board and a colour return an integer indicating how good the board is for that colour.
 evaluate :: Board -> Col -> Int
 evaluate Board {pieces = []}                _       = 0
-evaluate Board {pieces = ((_, colour1):xs)} colour2  
-                       | colour1 == colour2 = (evaluate (Board sizeOfBoard 0 xs) colour2) + 1
-                       | otherwise          = evaluate (Board sizeOfBoard 0 xs) colour2
+evaluate Board {pieces = ((_, colour1):xs), size = s} colour2  
+        | colour1 == colour2 = (evaluate (Board s 0 xs) colour2) + 1
+        | otherwise          = evaluate (Board s 0 xs) colour2
 
 
 getPosX :: Position -> Float

@@ -1,4 +1,4 @@
-module Draw(drawWorld) where
+module Draw(drawWorld, width, gridPos, rectSize, pieceSize) where
 
 import Graphics.Gloss
 import Board
@@ -9,8 +9,12 @@ import Debug.Trace
 width = 800.0
 height = 800.0
 gridPos = width/2.0
-rectSize = width / (fromIntegral sizeOfBoard)
-pieceSize = (rectSize / 2.0)
+
+rectSize :: Int -> Float
+rectSize size = width / (fromIntegral size)
+
+pieceSize :: Int -> Float
+pieceSize size = ((rectSize size)/ 2.0)
 
 -- | Translate between our custom 'Col' and the 'Color' needed for drawing
 getCol :: Col -> Color
@@ -30,14 +34,14 @@ drawWorld w = boardDrawing w
 -- The picture consists of: the background, the grid, the pieces
 boardDrawing :: World -> Picture
 boardDrawing (World (Board size passes pieces) turn _ _ _ True) = pictures [background, 
-                                                                          validDrawing (checkAvailable (Board size passes pieces) (0,0) turn),
-                                                                          gridDrawing,
-                                                                          (piecesDrawing pieces)
-                                                                         ]
+                                                                            validDrawing size (checkAvailable (Board size passes pieces) (0,0) turn),
+                                                                            gridDrawing size,
+                                                                            (piecesDrawing size pieces)
+                                                                           ]
 boardDrawing (World (Board size passes pieces) turn _ _ _ _)    = pictures [background,
-                                                                          gridDrawing,
-                                                                          (piecesDrawing pieces)
-                                                                         ]
+                                                                            gridDrawing size,
+                                                                            (piecesDrawing size pieces)
+                                                                           ]
 
 
 -- | Draws a green rectangle as the background
@@ -46,77 +50,89 @@ background = Color (makeColor8 0 102 51 255) $ rectangleSolid width height
 
 
 -- | Draws grid by drawing horizontal and vertical lines
-gridDrawing :: Picture
-gridDrawing = pictures [horizontalDrawing, verticalDrawing]
+gridDrawing :: Int -> Picture
+gridDrawing size = pictures [horizontalDrawing size, verticalDrawing size]
 
 
 -- | Draw all pieces given a list of (Position, Col)
-piecesDrawing :: [(Position, Col)] -> Picture
-piecesDrawing [] = Blank
-piecesDrawing (x:xs) = pictures 
-	[ drawPiece (getPosX (fst x)) (getPosY (fst x)) (getCol (snd x))
-	, (piecesDrawing xs)
+piecesDrawing :: Int -> [(Position, Col)] -> Picture
+piecesDrawing s [] = Blank
+piecesDrawing s (x:xs) = pictures 
+	[ drawPiece s (getPosX (fst x)) (getPosY (fst x)) (getCol (snd x))
+	, (piecesDrawing s xs)
 	]
 
 
 --map to draw lines for [1..7]
-verticalDrawing :: Picture
-verticalDrawing = pictures (map drawVertial [1.0..7.0])
+verticalDrawing :: Int -> Picture
+verticalDrawing s = let size = (fromIntegral (s-1) :: Float) in
+                        pictures (map (drawVertial s) [1.0..size])
 
-horizontalDrawing :: Picture
-horizontalDrawing = pictures (map drawHorizontal [1.0..7.0])
+horizontalDrawing :: Int -> Picture
+horizontalDrawing s = let size = (fromIntegral (s-1) :: Float) in
+                          pictures (map (drawHorizontal s) [1.0..size])
 
 
 
 -- | Draw an individual piece (circle)
-drawPiece 	:: Float 	-- ^ x coordinate of the piece
+drawPiece 	:: Int
+            -> Float 	-- ^ x coordinate of the piece
 			-> Float 	-- ^ y coordinate of the piece
 			-> Color 	-- ^ Color of the piece
 			-> Picture 
-drawPiece x y c = translate (guiX x) (guiY y) $ Color c $ circleSolid pieceSize
+drawPiece s x y c = translate (guiX s x) (guiY s y) $ Color c $ circleSolid (pieceSize s)
 
 -- | Highlights all valid moves
-validDrawing :: [Position]  -- ^ The positions of valid moves to be highlighted
+validDrawing :: Int
+             -> [Position]  -- ^ The positions of valid moves to be highlighted
              -> Picture
-validDrawing [] = Blank
-validDrawing (x:xs) = pictures [drawValid (getPosX x) (getPosY x), (validDrawing xs)]
-
--- | Draws a square highlighting a valid ove
-drawValid  :: Float   -- ^ x coordinate of valid square
-           -> Float   -- ^ y coordinate of valid square
-           -> Picture
-drawValid x y = (color rose (polygon [(squarePosX x, squarePosY y), (squarePosX (x+1), squarePosY y), (squarePosX (x+1), squarePosY (y+1)), (squarePosX x, squarePosY (y+1))])) 
-
--- | converts an x position to an x position on the GUI for squares
-squarePosX :: Float -- ^ The position to be converted
-           -> Float -- ^ Returns the converted position
-squarePosX x = -gridPos + (rectSize * x) 
-
--- | converts an y position to an y position on the GUI for squares
-squarePosY :: Float -- ^ The position to be converted 
-           -> Float -- ^ Returns the converted position
-squarePosY y = gridPos - (rectSize * y) 
-
+validDrawing _ [] = Blank
+validDrawing s (x:xs) = pictures [drawValid s (getPosX x) (getPosY x), (validDrawing s xs)]
 
 -- | Draw an individual vertical line given an offset
 -- The line is drawn at rectSize*offset
-drawVertial :: Float 	-- ^ The offset where the line is drawn.
+drawVertial :: Int
+            -> Float 	-- ^ The offset where the line is drawn.
 			-> Picture
-drawVertial x = color black (line [((squarePosX x), gridPos), ((squarePosX x), -(gridPos)) ])
+drawVertial s x = color black (line [((squarePosX s x), gridPos), ((squarePosX s x), -(gridPos)) ])
 
 
 -- | Draw an individual horizontal line given an offset
 -- The line is drawn at rectSize*offset
-drawHorizontal 	:: Float 	-- ^ The offset where the line is drawn.
+drawHorizontal 	:: Int
+                -> Float 	-- ^ The offset where the line is drawn.
 				-> Picture
-drawHorizontal y = color black (line [(gridPos, (squarePosY y)), (-(gridPos), (squarePosY y)) ])
+drawHorizontal s y = color black (line [(gridPos, (squarePosY s y)), (-(gridPos), (squarePosY s y)) ])
+
+
+
+-- | Draws a square highlighting a valid ove
+drawValid  :: Int
+           -> Float   -- ^ x coordinate of valid square
+           -> Float   -- ^ y coordinate of valid square
+           -> Picture
+drawValid s x y = (color rose (polygon [(squarePosX s x, squarePosY s y), (squarePosX s (x+1), squarePosY s y), (squarePosX s (x+1), squarePosY s (y+1)), (squarePosX s x, squarePosY s (y+1))])) 
+
+-- | converts an x position to an x position on the GUI for squares
+squarePosX :: Int
+           -> Float -- ^ The position to be converted
+           -> Float -- ^ Returns the converted position
+squarePosX s x = -gridPos + ((rectSize s)* x) 
+
+-- | converts an y position to an y position on the GUI for squares
+squarePosY :: Int
+           -> Float -- ^ The position to be converted 
+           -> Float -- ^ Returns the converted position
+squarePosY s y = gridPos - ((rectSize s)* y) 
+
+
 
 
 
 -- | Translate the x board coordinate to the x coordinate on the gui
-guiX :: Float -> Float
-guiX x = -gridPos + pieceSize + (rectSize*x)
+guiX :: Int -> Float -> Float
+guiX s x = -gridPos + (pieceSize s)+ ((rectSize s)*x)
 
 -- | Translate the y board coordinate to the y coordinate on the gui
-guiY :: Float -> Float
-guiY y = gridPos - pieceSize - (rectSize*y)
+guiY :: Int -> Float -> Float
+guiY s y = gridPos - (pieceSize s) - ((rectSize s)*y)
