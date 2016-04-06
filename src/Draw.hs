@@ -29,12 +29,12 @@ drawWorld w = boardDrawing w
 -- | Draws entire board.
 -- The picture consists of: the background, the grid, the pieces
 boardDrawing :: World -> Picture
-boardDrawing (World (Board size passes pieces) turn _ _ True) = pictures [background, 
+boardDrawing (World (Board size passes pieces) turn _ _ _ True) = pictures [background, 
                                                                           validDrawing (checkAvailable (Board size passes pieces) (0,0) turn),
                                                                           gridDrawing,
                                                                           (piecesDrawing pieces)
                                                                          ]
-boardDrawing (World (Board size passes pieces) turn _ _ _)    = pictures [background,
+boardDrawing (World (Board size passes pieces) turn _ _ _ _)    = pictures [background,
                                                                           gridDrawing,
                                                                           (piecesDrawing pieces)
                                                                          ]

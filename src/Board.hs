@@ -43,15 +43,17 @@ data PlayerType = Human | AI
 -- most recent moves were).
 data World = World { board :: Board,
                      turn :: Col,
+                     stateList :: [(Board, Col)], -- Need to store colour of turn in case of pass
                      bType :: PlayerType,
                      wType :: PlayerType,
                      showValid :: Bool
                      }
 
+
 -- | initialises the world based on the arguments passed to it
 initWorld :: [String]  -- ^ List of command line arguments
           -> World     -- ^ Returns initialised world
-initWorld args = setArgs args (World initBoard Black Human Human False)
+initWorld args = setArgs args (World initBoard Black [] Human Human False)
 
 
 -- | Takes a default world from initWorld and alters it depending on arguments
@@ -213,3 +215,15 @@ getPosX (x,y) = fromIntegral(x)
 
 getPosY :: Position -> Float
 getPosY (x,y) = fromIntegral(y)
+
+
+-- | Reverts world back to most recent move - only human player turns are recorded and reverted to
+undoTurn :: World  -- ^ The world to be reverted to the previos turn
+         -> World  -- ^ returns the world in its previos turn
+undoTurn (World b c [] bt wt v) = trace ("Cannot undo further back than current state") 
+                                        (World b c [] bt wt v)
+undoTurn (World b c ((x,y):xs) Human Human v) = trace "Reverted to previous player turn" (World x y xs Human Human v)
+undoTurn (World b Black ((x,y):xs) Human wt v)= trace "Reverted to previous player turn" (World x Black xs Human wt v)
+undoTurn (World b White ((x,y):xs) bt Human v)= trace "Reverted to previous player turn" (World x White xs bt Human v)
+undoTurn w                                    = trace "Cannot revert during AI turn" w
+
