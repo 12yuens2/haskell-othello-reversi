@@ -28,7 +28,8 @@ main = do args <- getArgs
                black 
                10
                (initWorld args) -- in Board.hs
-               drawWorld        -- in Draw.hs
+               drawWorldBMP
+               --drawWorld        -- in Draw.hs
                handleInput      -- in Input.hs
                updateWorld      -- in AI.hs
 

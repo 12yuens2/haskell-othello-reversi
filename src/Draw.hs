@@ -1,10 +1,11 @@
-module Draw(drawWorld) where
+module Draw(drawWorldBMP) where
 
 import Graphics.Gloss
 import Board
 import Data.Tuple
 
 import Debug.Trace
+import System.IO.Unsafe (unsafePerformIO)
 
 width = 800.0
 height = 800.0
@@ -120,3 +121,43 @@ guiX x = -gridPos + pieceSize + (rectSize*x)
 -- | Translate the y board coordinate to the y coordinate on the gui
 guiY :: Float -> Float
 guiY y = gridPos - pieceSize - (rectSize*y)
+
+
+
+
+
+{- Drawing with Bitmap images -}
+
+
+
+bmp :: FilePath -> Picture
+bmp file = unsafePerformIO $ loadBMP file
+
+blackPiece :: Picture
+blackPiece = bmp "res/black.bmp"
+
+whitePiece :: Picture 
+whitePiece = bmp "res/white.bmp"
+
+blankPiece :: Picture
+blankPiece = bmp "res/blank.bmp"
+
+drawWorldBMP :: World -> Picture
+drawWorldBMP (World (Board size _ pieces) _ _ _ _) = pictures [(drawBoardBMP size), (drawPiecesBMP pieces)]
+
+
+drawBoardBMP :: Int -> Picture
+drawBoardBMP size = pictures (map drawEmptyPiece [(x,y) | x <- [0..(size-1)], y <- [0..(size-1)]])
+
+
+drawEmptyPiece :: Position -> Picture
+drawEmptyPiece (x,y) = translate (guiX $ fromIntegral(x)) (guiY $ fromIntegral(y)) $ blankPiece
+
+
+drawPiecesBMP :: [(Position, Col)] -> Picture 
+drawPiecesBMP [] = Blank
+drawPiecesBMP (((x,y),col):ps) = pictures [drawPieceBMP (guiX $ fromIntegral(x)) (guiY $ fromIntegral(y)) col, drawPiecesBMP ps]
+
+drawPieceBMP :: Float -> Float -> Col -> Picture
+drawPieceBMP x y Black = translate x y $ blackPiece
+drawPieceBMP x y White = translate x y $ whitePiece
