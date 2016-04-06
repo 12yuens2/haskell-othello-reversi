@@ -1,5 +1,7 @@
 module Main where
 
+import System.Environment
+
 import Graphics.Gloss
 
 import Board
@@ -21,11 +23,12 @@ import AI
 -- move
 
 main :: IO ()
-main = play (InWindow "Othello" (800, 800) (10, 10)) 
-			black 
-			10
-            initWorld -- in Board.hs
-            drawWorld -- in Draw.hs
-            handleInput -- in Input.hs
-            updateWorld -- in AI.hs
+main = do args <- getArgs
+          play (InWindow "Othello" (800, 800) (10, 10)) 
+               black 
+               10
+               (initWorld args) -- in Board.hs
+               drawWorld        -- in Draw.hs
+               handleInput      -- in Input.hs
+               updateWorld      -- in AI.hs
 

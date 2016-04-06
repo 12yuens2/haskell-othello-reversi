@@ -1,5 +1,7 @@
 module Board where
 
+import System.Environment
+
 import Debug.Trace
 
 sizeOfBoard = 8
@@ -27,6 +29,10 @@ data Board = Board { size :: Int,
 initBoard = Board sizeOfBoard 0 [((3,3), Black), ((3,4), White),
                                  ((4,3), White), ((4,4), Black)]
 
+-- | PlayerType represents whether the player is Human or AI (more types
+-- can be added in future for different AI types)
+data PlayerType = Human | AI
+  deriving (Show, Eq)
 
 -- Overall state is the board and whose turn it is, plus any further
 -- information about the world (this may later include, for example, player
@@ -36,11 +42,27 @@ initBoard = Board sizeOfBoard 0 [((3,3), Black), ((3,4), White),
 -- will be useful (information for the AI, for example, such as where the
 -- most recent moves were).
 data World = World { board :: Board,
-                     turn :: Col
+                     turn :: Col,
+                     bType :: PlayerType,
+                     wType :: PlayerType,
+                     showValid :: Bool
                      }
 
+-- | initialises the world based on the arguments passed to it
+initWorld :: [String]  -- ^ List of command line arguments
+          -> World     -- ^ Returns initialised world
+initWorld args = setArgs args (World initBoard Black Human Human False)
 
-initWorld = World initBoard Black
+
+-- | Takes a default world from initWorld and alters it depending on arguments
+setArgs :: [String]  -- ^ List of command line arguments
+        -> World     -- ^ The world to alter depending on flags
+        -> World     -- ^ Returns a world updated depending on flags
+setArgs [] w = w
+setArgs (x:xs) w | x == "-ab" = w {bType = AI}
+                 | x == "-aw" = w {wType = AI}
+                 | x == "-v"  = w {showValid = True}
+                 | otherwise  = error ("Unrecognised flag: " ++ x)
 
 -- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable
 validMovesAvailable :: Board  -- ^ The board to be checked
