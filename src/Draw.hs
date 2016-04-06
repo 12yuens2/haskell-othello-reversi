@@ -7,10 +7,10 @@ import Data.Tuple
 import Debug.Trace
 import System.IO.Unsafe (unsafePerformIO)
 
-width = 800.0
+width = 1200.0
 height = 800.0
-gridPos = width/2.0
-rectSize = width / (fromIntegral sizeOfBoard)
+gridPos = height/2.0
+rectSize = height / (fromIntegral sizeOfBoard)
 pieceSize = (rectSize / 2.0)
 
 -- | Translate between our custom 'Col' and the 'Color' needed for drawing
@@ -142,13 +142,28 @@ whitePiece = bmp "res/white.bmp"
 blankPiece :: Picture
 blankPiece = bmp "res/blank.bmp"
 
+hintPiece :: Picture
+hintPiece = bmp "res/hint.bmp"
+
 drawWorldBMP :: World -> Picture
+drawWorldBMP (World (Board size passes pieces) turn _ _ True) = pictures [ (drawBoardBMP size)
+                                                                      , (drawHints (checkAvailable (Board size passes pieces) (0,0) turn))
+                                                                      , (drawPiecesBMP pieces)
+                                                                      ]
+
 drawWorldBMP (World (Board size _ pieces) _ _ _ _) = pictures [(drawBoardBMP size), (drawPiecesBMP pieces)]
 
 
 drawBoardBMP :: Int -> Picture
 drawBoardBMP size = pictures (map drawEmptyPiece [(x,y) | x <- [0..(size-1)], y <- [0..(size-1)]])
 
+
+
+drawHints :: [Position] -> Picture
+drawHints [] = Blank
+drawHints ((x,y):ps) = pictures [ (translate (guiX $ fromIntegral(x)) (guiY $ fromIntegral(y)) $ hintPiece)
+                                , (drawHints ps)
+                                ]
 
 drawEmptyPiece :: Position -> Picture
 drawEmptyPiece (x,y) = translate (guiX $ fromIntegral(x)) (guiY $ fromIntegral(y)) $ blankPiece
