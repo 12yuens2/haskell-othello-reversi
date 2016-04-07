@@ -77,7 +77,7 @@ setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v)
                     | (snd (head readResult)) == "" = 
                         let val = (fst (head readResult))
                             result | val < 4   = error "Grid must be at least 4x4"
-                                   | val > 20  = error "Grid cannot be larger than 20x20"
+                                   | val > 16  = error "Grid cannot be larger than 16x16"
                                    | odd val   = error "Grid width must be even"
                                    | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt v)
                             in result

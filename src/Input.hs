@@ -1,5 +1,7 @@
 module Input(handleInput) where
 
+{-# LANGUAGE MultiWayIf #-}
+
 import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss
 import Board
@@ -25,8 +27,10 @@ handleInput (EventKey (Char 'u') Down _ _) w
     = undoTurn w
 handleInput (EventKey (Char k) Down _ _) w
     = trace ("Key " ++ show k ++ " down") w
-handleInput (EventKey (Char k) Up _ _) w
-    = trace ("Key " ++ show k ++ " up") w
+handleInput (EventKey (Char k) Up _ _) (World b t sts bt wt v) 
+		| k == 'h' 	= (World b t sts bt wt (not v))
+	  	| otherwise = (World b t sts bt wt v)
+
 handleInput e w = w
 
 

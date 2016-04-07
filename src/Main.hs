@@ -24,11 +24,12 @@ import AI
 
 main :: IO ()
 main = do args <- getArgs
-          play (InWindow "Othello" (800, 800) (10, 10)) 
+          play (InWindow "Othello" (1200, 800) (10, 10)) 
                black 
                10
                (initWorld args) -- in Board.hs
-               drawWorld        -- in Draw.hs
+               drawWorldBMP
+               --drawWorld        -- in Draw.hs
                handleInput      -- in Input.hs
                updateWorld      -- in AI.hs
 
