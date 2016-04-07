@@ -3,6 +3,7 @@ module Board where
 import System.Environment
 
 import Debug.Trace
+import Data.List
 
 defaultBoardSize = 8
 
@@ -48,7 +49,19 @@ data World = World { board :: Board,
                      chooseStart :: Bool,
                      gameIsOver :: Bool
                      }
+--stringToWorld :: String->World
+--stringToWorld s
+pieceToString :: (Position, Col)->String
+pieceToString ((x,y),c) = "["++(show x)++"/"++(show y)++"/"++(show c)++"]"
 
+boardToString :: Board->String
+boardToString (Board size passes pieces) = "{["++(show size)++"]["++(show passes)++"]["++(intercalate "" (map pieceToString pieces)) ++"]}
+
+stateToSring :: (Board, Col)->String
+stateToSring (b c) = "["++(boardToString b)++"]["++(show col)++"]"
+
+worldToString :: World -> String
+worldToString (World b t sts bt wt v r go) = (boardToString b)++"{"++(show t)++"}{"++(intercalate "" (map stateToSring sts))++"}{"++(show bt)++"}{"++(show wt)++"}{"++(show v)++"}{"++(show r)++"}{"++(show go)++"}"
 
 
 -- | initialises the world based on the arguments passed to it
