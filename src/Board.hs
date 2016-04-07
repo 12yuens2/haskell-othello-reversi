@@ -154,6 +154,10 @@ getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ s
 makeMove :: Board -> Position -> Col -> Maybe Board
 makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
                    | length posList == 0     = Nothing
+                   | x>=(size b)              = Nothing
+                   | y>=(size b)              = Nothing
+                   | x<0                     = Nothing
+                   | y<0                     = Nothing
                    | otherwise               = Just (flipping (Board (size b) (passes b) (((x,y),c):(pieces b))) posList)
                    where
                        posList = getPosList b (x,y) c
