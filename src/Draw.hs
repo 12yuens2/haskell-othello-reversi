@@ -46,16 +46,16 @@ bmp :: FilePath -> Picture
 bmp file =  unsafePerformIO $ loadBMP file
 
 blackPiece :: Picture
-blackPiece = bmp "res/black.bmp"
+blackPiece = bmp "res/black2.bmp"
 
 whitePiece :: Picture 
-whitePiece = bmp "res/white.bmp"
+whitePiece = bmp "res/white2.bmp"
 
 blankPiece :: Picture
 blankPiece = bmp "res/blank.bmp"
 
 hintPiece :: Picture
-hintPiece = bmp "res/hint.bmp"
+hintPiece = bmp "res/hint2.bmp"
 
 drawWorldBMP :: World -> Picture
 drawWorldBMP (World (Board size passes pieces) turn _ _ _ True True) = pictures [ (drawBoardBMP size)
