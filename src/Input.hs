@@ -1,5 +1,7 @@
 module Input(handleInput) where
 
+{-# LANGUAGE MultiWayIf #-}
+
 import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss
 import Board
@@ -17,6 +19,7 @@ import Debug.Trace
 handleInput :: Event -> World -> World
 --handleInput (EventMotion (x, y)) w 
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
+
 handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pieces) t bt wt v)
 	= case (makeMove (Board size passes pieces) (snapX x, snapY y) t) of
 		Just b  -> trace ("Left button pressed at: " ++ show (snapX x, snapY y)) World b (other t) bt wt v
@@ -25,8 +28,10 @@ handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size p
     -- = trace ("Left button pressed at: " ++ show (snapX x, snapY y)) World (Board size (passes+1) (((snapX x, snapY y), t):pieces)) (other t)
 handleInput (EventKey (Char k) Down _ _) w
     = trace ("Key " ++ show k ++ " down") w
-handleInput (EventKey (Char k) Up _ _) w
-    = trace ("Key " ++ show k ++ " up") w
+handleInput (EventKey (Char k) Up _ _) (World b t bt wt v) 
+		| k == 'h' 	= (World b t bt wt (not v))
+	  	| otherwise = (World b t bt wt v)
+
 handleInput e w = w
 
 

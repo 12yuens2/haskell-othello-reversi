@@ -151,12 +151,21 @@ drawWorldBMP (World (Board size passes pieces) turn _ _ True) = pictures [ (draw
                                                                       , (drawPiecesBMP pieces)
                                                                       ]
 
-drawWorldBMP (World (Board size _ pieces) _ _ _ _) = pictures [(drawBoardBMP size), (drawPiecesBMP pieces)]
+drawWorldBMP (World (Board size passes pieces) _ _ _ _) = 
+	pictures 	[ (drawBoardBMP size)
+				, (drawPiecesBMP pieces)
+				, drawText ("Black: " ++ (show $ evaluate (Board size passes pieces) Black)) (-2300) (-500)
+				, drawText ("White: " ++ (show $ evaluate (Board size passes pieces) White)) (-2300) 0
+				]
 
 
 drawBoardBMP :: Int -> Picture
 drawBoardBMP size = pictures (map drawEmptyPiece [(x,y) | x <- [0..(size-1)], y <- [0..(size-1)]])
 
+
+
+drawText :: String -> Float -> Float -> Picture
+drawText text x y = scale 0.25 0.25 $ translate x y $ Text text
 
 
 drawHints :: [Position] -> Picture

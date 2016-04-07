@@ -24,7 +24,7 @@ import AI
 
 main :: IO ()
 main = do args <- getArgs
-          play (InWindow "Othello" (800, 800) (10, 10)) 
+          play (InWindow "Othello" (1200, 800) (10, 10)) 
                black 
                10
                (initWorld args) -- in Board.hs
