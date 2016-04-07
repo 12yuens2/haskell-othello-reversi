@@ -26,9 +26,7 @@ data Board = Board { size :: Int,
   deriving Show
 
 -- Default board is 8x8, neither played has passed, with 4 initial pieces 
-initBoard = Board defaultBoardSize 0 [((3,3), Black), ((3,4), White),
-                                      ((4,3), White), ((4,4), Black)]
-
+initBoard = Board defaultBoardSize 0 []
 -- | PlayerType represents whether the player is Human or AI (more types
 -- can be added in future for different AI types)
 data PlayerType = Human | AI
@@ -46,24 +44,26 @@ data World = World { board :: Board,
                      stateList :: [(Board, Col)], -- Need to store colour of turn in case of pass
                      bType :: PlayerType,
                      wType :: PlayerType,
-                     showValid :: Bool
+                     showValid :: Bool,
+                     chooseStart :: Bool
                      }
 
 
 -- | initialises the world based on the arguments passed to it
 initWorld :: [String]  -- ^ List of command line arguments
           -> World     -- ^ Returns initialised world
-initWorld args = setBasePositions (setArgs args (World initBoard Black [] Human Human False))
+initWorld args = setBasePositions (setArgs args (World initBoard Black [] Human Human False False))
 
 -- | Sets 4 starting positions in world boars 
 setBasePositions :: World  -- ^ The world to set positions in 
                  -> World  -- ^ Returns world updated with updated positoins
-setBasePositions (World (Board sz ps _) t sts bt wt v)
+setBasePositions (World (Board sz ps _) t sts bt wt v False)
                  = let mid = div sz 2 in
                        World (Board sz ps 
                              [((mid-1,mid-1), Black), ((mid-1,mid), White),
                              ((mid,mid-1), White), ((mid,mid), Black)]) 
-                             t sts bt wt v
+                             t sts bt wt v False
+setBasePositions (World b t sts bt wt v True) = World b t sts bt wt v True
 
 
 -- | Takes a default world from initWorld and alters it depending on arguments
@@ -71,7 +71,7 @@ setArgs :: [String]  -- ^ List of command line arguments
         -> World     -- ^ The world to alter depending on flags
         -> World     -- ^ Returns a world updated depending on flags
 setArgs [] w = w
-setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v) 
+setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v r) 
                     | xs == [] = error "A number is required after -s flag to determine size of board"
                     | readResult == [] = error "An integer is required after the -s flag"
                     | (snd (head readResult)) == "" = 
@@ -79,11 +79,11 @@ setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v)
                             result | val < 4   = error "Grid must be at least 4x4"
                                    | val > 16  = error "Grid cannot be larger than 16x16"
                                    | odd val   = error "Grid width must be even"
-                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt v)
+                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt v r)
                             in result
                     | otherwise = error "An integer is required after -s"
                         where readResult = (reads (head xs)) :: [(Int, String)]
-                      
+setArgs ("-r":xs)  w = setArgs xs (w {chooseStart = True})
 setArgs ("-ab":xs) w = setArgs xs (w {bType = AI})
 setArgs ("-aw":xs) w = setArgs xs (w {wType = AI})
 setArgs ("-v":xs)  w = setArgs xs (w {showValid = True})
@@ -105,8 +105,24 @@ checkAvailable b (x, y) c | x==(size b - 1) && y==(size b - 1) && isValidMove b 
                           | x==(size b - 1) && y==(size b - 1)    = []
                           | y==(size b - 1) && isValidMove b (x,y) c = ((x,y):(checkAvailable b (x+1,0) c))
                           | y==(size b - 1)                          = checkAvailable b (x+1, 0) c
-                          | isValidMove b (x,y) c                       = ((x,y):(checkAvailable b (x,y+1) c))
-                          | otherwise                                   = checkAvailable b (x,y+1) c
+                          | isValidMove b (x,y) c                    = ((x,y):(checkAvailable b (x,y+1) c))
+                          | otherwise                                = checkAvailable b (x,y+1) c
+
+checkStart :: Board -> [Position]
+checkStart b = availableStart b (mid -1, mid -1)
+                  where mid = div (size b) 2
+
+availableStart :: Board -> Position -> [Position]
+availableStart b (x, y) | x == (mid - 1) && y == (mid - 1) && containsPiece b (x,y) = availableStart b (mid,mid - 1)
+                        | x == (mid - 1) && y == (mid - 1)        = (x,y):(availableStart b (mid,mid - 1))
+                        | x == mid       && y == (mid - 1) && containsPiece b (x,y) = availableStart b (mid - 1,mid)
+                        | x == mid && y == (mid - 1)              = (x,y):(availableStart b (mid - 1,mid))
+                        | x == (mid -1) && containsPiece b (x,y)  = availableStart b (mid,mid)
+                        | x == (mid - 1)                          = (x,y):(availableStart b (mid,mid))
+                        | containsPiece b (x,y)                   = []
+                        | otherwise                               = [(x,y)]
+                            where mid = div (size b) 2
+
 
 -- | Checks if a move is valid (it will actually flip some pieces)
 isValidMove :: Board  -- ^ The board to be checked 
@@ -140,6 +156,16 @@ makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
                    | otherwise               = Just (flipping (Board (size b) (passes b) (((x,y),c):(pieces b))) posList)
                    where
                        posList = getPosList b (x,y) c
+
+startMove :: Board -> Position -> Col -> Maybe Board
+startMove b (x,y) c | (containsPiece b (x,y)) = Nothing
+                    | (x == mid || x == mid - 1) &&
+                      (y == mid || y == mid - 1)    = Just (b {pieces = ((x,y),c):(pieces b)})
+                    | otherwise                     = Nothing
+                        where mid = div (size b) 2
+
+startState :: [(Position, Col)] -> Bool
+startState xs = (length xs) < 4 
 
 -- | Flips all the pieces in the given list of 'Position's
 flipping :: Board -> [Position] -> Board
@@ -244,10 +270,13 @@ getPosY (x,y) = fromIntegral(y)
 -- | Reverts world back to most recent move - only human player turns are recorded and reverted to
 undoTurn :: World  -- ^ The world to be reverted to the previos turn
          -> World  -- ^ returns the world in its previos turn
-undoTurn (World b c [] bt wt v) = trace ("Cannot undo further back than current state") 
-                                        (World b c [] bt wt v)
-undoTurn (World b c ((x,y):xs) Human Human v) = trace "Reverted to previous player turn" (World x y xs Human Human v)
-undoTurn (World b Black ((x,y):xs) Human wt v)= trace "Reverted to previous player turn" (World x Black xs Human wt v)
-undoTurn (World b White ((x,y):xs) bt Human v)= trace "Reverted to previous player turn" (World x White xs bt Human v)
-undoTurn w                                    = trace "Cannot revert during AI turn" w
+undoTurn (World b c [] bt wt v r) = trace ("Cannot undo further back than current state") 
+                                          (World b c [] bt wt v r)
+undoTurn (World b c ((x,y):xs) Human Human v r)  = trace "Reverted to previous player turn" 
+                                                         (World x y xs Human Human v r)
+undoTurn (World b Black ((x,y):xs) Human wt v r) = trace "Reverted to previous player turn" 
+                                                         (World x Black xs Human wt v r)
+undoTurn (World b White ((x,y):xs) bt Human v r) = trace "Reverted to previous player turn" 
+                                                         (World x White xs bt Human v r)
+undoTurn w                                       = trace "Cannot revert during AI turn" w
 

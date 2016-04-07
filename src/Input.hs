@@ -19,17 +19,22 @@ import Debug.Trace
 handleInput :: Event -> World -> World
 --handleInput (EventMotion (x, y)) w 
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pieces) t sts bt wt v)
+handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pc) t sts bt wt v True)
+    = case (startMove (Board size passes pc) (snapX size x, snapY size y) t) of
+           Just b  -> trace ("Left button pressed at: " ++ show (snapX size x, snapY size y)) (World b (other t) (((Board size passes pc),t):sts) bt wt v (startState (pieces b)))
+           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX size x, snapY size y)) (World (Board size passes pc) t sts bt wt v True)
+
+handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pieces) t sts bt wt v r)
     = case (makeMove (Board size passes pieces) (snapX size x, snapY size y) t) of
-        Just b  -> trace ("Left button pressed at: " ++ show (snapX size x, snapY size y)) (World b (other t) (((Board size passes pieces),t):sts) bt wt v)
-        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX size x, snapY size y)) (World (Board size passes pieces) t sts bt wt v)
+        Just b  -> trace ("Left button pressed at: " ++ show (snapX size x, snapY size y)) (World b (other t) (((Board size passes pieces),t):sts) bt wt v r)
+        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX size x, snapY size y)) (World (Board size passes pieces) t sts bt wt v r)
 handleInput (EventKey (Char 'u') Down _ _) w
     = undoTurn w
 handleInput (EventKey (Char k) Down _ _) w
     = trace ("Key " ++ show k ++ " down") w
-handleInput (EventKey (Char k) Up _ _) (World b t sts bt wt v) 
-		| k == 'h' 	= (World b t sts bt wt (not v))
-	  	| otherwise = (World b t sts bt wt v)
+handleInput (EventKey (Char k) Up _ _) (World b t sts bt wt v r) 
+		| k == 'h' 	= (World b t sts bt wt (not v) r)
+	  	| otherwise = (World b t sts bt wt v r)
 
 handleInput e w = w
 

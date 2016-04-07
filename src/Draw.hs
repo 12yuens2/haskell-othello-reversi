@@ -165,12 +165,16 @@ hintPiece :: Picture
 hintPiece = bmp "res/hint.bmp"
 
 drawWorldBMP :: World -> Picture
-drawWorldBMP (World (Board size passes pieces) turn _ _ _ True) = pictures [ (drawBoardBMP size)
+drawWorldBMP (World (Board size passes pieces) turn _ _ _ True True) = pictures [ (drawBoardBMP size)
+                                                                      , (drawHints size (checkStart (Board size passes pieces)))
+                                                                      , (drawPiecesBMP size pieces)
+                                                                      ]
+drawWorldBMP (World (Board size passes pieces) turn _ _ _ True _) = pictures [ (drawBoardBMP size)
                                                                       , (drawHints size (checkAvailable (Board size passes pieces) (0,0) turn))
                                                                       , (drawPiecesBMP size pieces)
                                                                       ]
 
-drawWorldBMP (World (Board size passes pieces) _ _ _ _ _) = 
+drawWorldBMP (World (Board size passes pieces) _ _ _ _ _ _) = 
 	pictures 	[ (drawBoardBMP size)
 				, (drawPiecesBMP size pieces)
 				, drawText ("Black: " ++ (show $ evaluate (Board size passes pieces) Black)) (-2300) (-500)

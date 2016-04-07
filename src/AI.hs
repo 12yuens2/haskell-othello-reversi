@@ -54,7 +54,7 @@ buildTree gen b c = let moves = gen b c in -- generated moves
 getBestMove :: Int -- ^ Maximum search depth
             -> GameTree -- ^ Initial game tree
             -> Position
-getBestMove depth tree = fst(head (next_moves tree))
+getBestMove depth tree = trace "!!!!" fst(head (next_moves tree))
 
 --getBestMove 0 gametree = --get best score and return up the tree
 --getBestMove depth gametree = undefined --keep going down to the given depth
@@ -63,20 +63,21 @@ getBestMove depth tree = fst(head (next_moves tree))
 updateWorld :: Float -- ^ time since last update (you can ignore this)
             -> World -- ^ current world state
             -> World
-updateWorld _ (World b c sts bt wt v) | gameOver b = let (x,y) = checkScore b
-                                                         result | x == y    = error "Game is a draw"
-                                                                | x > y     = error "Black wins!"
-                                                                | otherwise = error "White wins!"
-                                                     in result
-                                      | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c) sts bt wt v
-                                      | c == Black && bt == Human     = World b {passes = 0} c sts bt wt v
-                                      | c == White && wt == Human     = World b {passes = 0} c sts bt wt v
-                                      | otherwise = let
+updateWorld _ (World b c sts bt wt v True) = World b c sts bt wt v True
+updateWorld _ (World b c sts bt wt v r) | gameOver b = let (x,y) = checkScore b
+                                                           result | x == y    = error "Game is a draw"
+                                                                  | x > y     = error "Black wins!"
+                                                                  | otherwise = error "White wins!"
+                                                       in result
+                                        | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c) sts bt wt v r
+                                        | c == Black && bt == Human     = World b {passes = 0} c sts bt wt v r
+                                        | c == White && wt == Human     = World b {passes = 0} c sts bt wt v r
+                                        | otherwise = let
                                                 tree = buildTree genAllMoves b c
                                                 nextMove = getBestMove 0 tree in
                                                 case makeMove b nextMove c of
                                                      Nothing -> error("not possible moves not implemented")
-                                                     Just b' -> (World b' (other c) sts bt wt v)
+                                                     Just b' -> (World b' (other c) sts bt wt v r)
 
 {- Hint: 'updateWorld' is where the AI gets called. If the world state
  indicates that it is a computer player's turn, updateWorld should use
