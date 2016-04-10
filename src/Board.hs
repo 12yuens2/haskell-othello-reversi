@@ -45,25 +45,27 @@ data World = World { board :: Board,
                      bType :: PlayerType,
                      wType :: PlayerType,
                      showValid :: Bool,
-                     chooseStart :: Bool
+                     chooseStart :: Bool,
+                     gameIsOver :: Bool
                      }
+
 
 
 -- | initialises the world based on the arguments passed to it
 initWorld :: [String]  -- ^ List of command line arguments
           -> World     -- ^ Returns initialised world
-initWorld args = setBasePositions (setArgs args (World initBoard Black [] Human Human False False))
+initWorld args = setBasePositions (setArgs args (World initBoard Black [] Human Human False False False))
 
 -- | Sets 4 starting positions in world boars 
 setBasePositions :: World  -- ^ The world to set positions in 
                  -> World  -- ^ Returns world updated with updated positoins
-setBasePositions (World (Board sz ps _) t sts bt wt v False)
+setBasePositions (World (Board sz ps _) t sts bt wt v False go)
                  = let mid = div sz 2 in
                        World (Board sz ps 
                              [((mid-1,mid-1), Black), ((mid-1,mid), White),
                              ((mid,mid-1), White), ((mid,mid), Black)]) 
-                             t sts bt wt v False
-setBasePositions (World b t sts bt wt v True) = World b t sts bt wt v True
+                             t sts bt wt v False go
+setBasePositions (World b t sts bt wt v True go) = World b t sts bt wt v True go
 
 
 -- | Takes a default world from initWorld and alters it depending on arguments
@@ -71,7 +73,7 @@ setArgs :: [String]  -- ^ List of command line arguments
         -> World     -- ^ The world to alter depending on flags
         -> World     -- ^ Returns a world updated depending on flags
 setArgs [] w = w
-setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v r) 
+setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v r go) 
                     | xs == [] = error "A number is required after -s flag to determine size of board"
                     | readResult == [] = error "An integer is required after the -s flag"
                     | (snd (head readResult)) == "" = 
@@ -79,7 +81,7 @@ setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt v r)
                             result | val < 4   = error "Grid must be at least 4x4"
                                    | val > 16  = error "Grid cannot be larger than 16x16"
                                    | odd val   = error "Grid width must be even"
-                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt v r)
+                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt v r go)
                             in result
                     | otherwise = error "An integer is required after -s"
                         where readResult = (reads (head xs)) :: [(Int, String)]
@@ -152,6 +154,10 @@ getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ s
 makeMove :: Board -> Position -> Col -> Maybe Board
 makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
                    | length posList == 0     = Nothing
+                   | x>=(size b)              = Nothing
+                   | y>=(size b)              = Nothing
+                   | x<0                     = Nothing
+                   | y<0                     = Nothing
                    | otherwise               = Just (flipping (Board (size b) (passes b) (((x,y),c):(pieces b))) posList)
                    where
                        posList = getPosList b (x,y) c
@@ -269,13 +275,13 @@ getPosY (x,y) = fromIntegral(y)
 -- | Reverts world back to most recent move - only human player turns are recorded and reverted to
 undoTurn :: World  -- ^ The world to be reverted to the previos turn
          -> World  -- ^ returns the world in its previos turn
-undoTurn (World b c [] bt wt v r) = trace ("Cannot undo further back than current state") 
-                                          (World b c [] bt wt v r)
-undoTurn (World b c ((x,y):xs) Human Human v r)  = trace "Reverted to previous player turn" 
-                                                         (World x y xs Human Human v r)
-undoTurn (World b Black ((x,y):xs) Human wt v r) = trace "Reverted to previous player turn" 
-                                                         (World x Black xs Human wt v r)
-undoTurn (World b White ((x,y):xs) bt Human v r) = trace "Reverted to previous player turn" 
-                                                         (World x White xs bt Human v r)
+undoTurn (World b c [] bt wt v r go) = trace ("Cannot undo further back than current state") 
+                                          (World b c [] bt wt v r go)
+undoTurn (World b c ((x,y):xs) Human Human v r go)  = trace "Reverted to previous player turn" 
+                                                         (World x y xs Human Human v r go)
+undoTurn (World b Black ((x,y):xs) Human wt v r go) = trace "Reverted to previous player turn" 
+                                                         (World x Black xs Human wt v r go)
+undoTurn (World b White ((x,y):xs) bt Human v r go) = trace "Reverted to previous player turn" 
+                                                         (World x White xs bt Human v r go)
 undoTurn w                                       = trace "Cannot revert during AI turn" w
 
