@@ -73,33 +73,41 @@ drawWorldBMP :: World    -- ^ The world which is to be drawn
              -> Picture
 
 --Draw gameover
-drawWorldBMP (World (Board sz ps pieces) turn _ _ _ _ _ True ) = pictures [ gameOverScreen, (drawText (getWinner (Board sz ps pieces)) 0 0)]
+drawWorldBMP (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True ) = pictures [gameOverScreen, (drawText (getWinner (Board sz ps pc) btime wtime) 0 0)]
+
+drawWorldBMP (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ ) = pictures [gameOverScreen, (drawText ("PAUSED") 0 0)]
 
 -- Draws hints for reversi start
-drawWorldBMP (World (Board sz ps pieces) turn _ _ _ True True _ ) = 
+drawWorldBMP (World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ ) = 
        pictures [ (drawBoardBMP sz)
-                , (drawHints sz (checkStart (Board sz ps pieces)))
-                , (drawPiecesBMP sz pieces)
-				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
-				, drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
+                , (drawHints sz (checkStart (Board sz ps pc)))
+                , (drawPiecesBMP sz pc)
+				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
+				, drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
+				, drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
+				, drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
                 ]
 
 --Draw hints
-drawWorldBMP (World (Board sz ps pieces) turn _ _ _ True _ _) = 
+drawWorldBMP (World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _) = 
        pictures [ (drawBoardBMP sz)
-                , (drawHints sz (checkAvailable (Board sz ps pieces) (0,0) turn))
-                , (drawPiecesBMP sz pieces)
-				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
-				, drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
+                , (drawHints sz (checkAvailable (Board sz ps pc) (0,0) turn))
+                , (drawPiecesBMP sz pc)
+				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
+				, drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
+				, drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
+				, drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
                 ]
 
 
 -- Draw otherwise
-drawWorldBMP (World (Board sz ps pieces) _ _ _ _ _ _ _ ) = 
+drawWorldBMP (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ ) = 
 	pictures 	[ (drawBoardBMP sz)
-				, (drawPiecesBMP sz pieces)
-				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
-				, drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
+				, (drawPiecesBMP sz pc)
+				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
+				, drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
+				, drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
+				, drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
 				]
 
 
@@ -111,10 +119,14 @@ drawBoardBMP sz = pictures (map (drawEmptyPiece sz) [(x,y) | x <- [0..(sz-1)], y
 
 -- ^ Gets a string stating the outcome of a game based on a board
 getWinner :: Board   -- The board to evaluate to find winner
+          -> Int     -- The current time left for white
+          -> Int
           -> String  -- Returns a string stating the winner
-getWinner b | x == y    = "Game is a draw"
-            | x > y     = "Black wins!"
-            | otherwise = "White wins!"
+getWinner b btime wtime | btime <= 0 = "Black ran out of time so White wins!"
+                        | wtime <= 0 = "White ran out of time so Black wins!"
+                        | x == y     = "Both players have the same number of pc so the game is a draw!"
+                        | x > y      = "Black has most pc so wins!"
+                        | otherwise  = "White has most pc so wins!"
   where (x,y) = checkScore b
 
 
@@ -126,9 +138,9 @@ drawText :: String   -- ^ String to draw
 drawText text x y = scale 0.25 0.25 $ translate x y $ Text text
 
 
--- | Draw hint pieces on the board
+-- | Draw hint pc on the board
 drawHints :: Int         -- ^ The size of the board on which hints are being drawn
-          -> [Position]  -- ^ The list of positions to put hint pieces
+          -> [Position]  -- ^ The list of positions to put hint pc
           -> Picture
 drawHints _ [] = Blank
 drawHints sz ((x,y):ps) = pictures [ (translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) hintPiece)
@@ -142,9 +154,9 @@ drawEmptyPiece :: Int       -- ^ The size of the board
 drawEmptyPiece sz (x,y) = translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) blankPiece
 
 
--- | Draws pieces onto the boards
+-- | Draws pc onto the boards
 drawPiecesBMP :: Int                -- ^ The size of the board 
-              -> [(Position, Col)]  -- ^ List of positions and colours for drawing pieces
+              -> [(Position, Col)]  -- ^ List of positions and colours for drawing pc
               -> Picture
 drawPiecesBMP _ [] = Blank
 drawPiecesBMP sz (((x,y),col):ps) = pictures [drawPieceBMP sz (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) col, drawPiecesBMP sz ps]
