@@ -1,4 +1,4 @@
-module Input(handleInput) where
+module Input where
 
 {-# LANGUAGE MultiWayIf #-}
 
@@ -19,37 +19,68 @@ import Debug.Trace
 -- trace :: String -> a -> a
 -- 'trace' returns its second argument while printing its first argument
 -- to stderr, which can be a very useful way of debugging!
-handleInput :: Event -> World -> World
---handleInput (EventMotion (x, y)) w 
---    = trace ("Mouse moved to: " ++ show (x,y)) w
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v True go)
-    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = (World (Board sz ps pc) t sts bt wt v True go) 
+--handleInput :: Event -> World -> World
+----handleInput (EventMotion (x, y)) w 
+----    = trace ("Mouse moved to: " ++ show (x,y)) w
+--handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v True go)
+--    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = (World (Board sz ps pc) t sts bt wt v True go) 
+--    | otherwise
+--    = case (startMove (Board sz ps pc) (x', y') t) of
+--           Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) (((Board sz ps pc),t):sts) bt wt v (startState (pieces b)) go)
+--           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt v True go)
+--    where x' = snapX sz x
+--          y' = snapY sz y
+
+--handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v r go)
+--    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = (World (Board sz ps pc) t sts bt wt v r go) 
+--    | otherwise
+--    = case (makeMove (Board sz ps pc) (x', y') t) of
+--        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) (((Board sz ps pc),t):sts) bt wt v r go)
+--        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt v r go)
+--    where x' = snapX sz x
+--          y' = snapY sz y
+
+--handleInput (EventKey (Char k) Down _ _) w
+--    = trace ("Key " ++ show k ++ " down") w
+--handleInput (EventKey (Char k) Up _ _) (World b t sts bt wt v r go) 
+--		| k == 'h' 	= (World b t sts bt wt (not v) r go)
+--		| k == 'u'  = undoTurn (World b t sts bt wt v r go)
+--		| k == 'r' 	= let args = unsafePerformIO $ getArgs in
+--						 (initWorld args)
+--	  	| otherwise = (World b t sts bt wt v r go)
+--handleInput e w = w
+
+
+--IO version of handle input
+handleInputIO :: Event -> World -> IO World
+handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v True go)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = return (World (Board sz ps pc) t sts bt wt v True go) 
     | otherwise
     = case (startMove (Board sz ps pc) (x', y') t) of
-           Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) (((Board sz ps pc),t):sts) bt wt v (startState (pieces b)) go)
-           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt v True go)
+           Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) (((Board sz ps pc),t):sts) bt wt v (startState (pieces b)) go)
+           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt v True go)
     where x' = snapX sz x
           y' = snapY sz y
 
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v r go)
-    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = (World (Board sz ps pc) t sts bt wt v r go) 
+handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v r go)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = return (World (Board sz ps pc) t sts bt wt v r go) 
     | otherwise
     = case (makeMove (Board sz ps pc) (x', y') t) of
-        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) (((Board sz ps pc),t):sts) bt wt v r go)
-        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt v r go)
+        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) (((Board sz ps pc),t):sts) bt wt v r go)
+        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt v r go)
     where x' = snapX sz x
           y' = snapY sz y
 
-handleInput (EventKey (Char k) Down _ _) w
-    = trace ("Key " ++ show k ++ " down") w
-handleInput (EventKey (Char k) Up _ _) (World b t sts bt wt v r go) 
-		| k == 'h' 	= (World b t sts bt wt (not v) r go)
-		| k == 'u'  = undoTurn (World b t sts bt wt v r go)
-		| k == 'r' 	= let args = unsafePerformIO $ getArgs in
-						 (initWorld args)
-	  	| otherwise = (World b t sts bt wt v r go)
-handleInput e w = w
+handleInputIO (EventKey (Char k) Down _ _) w
+    = trace ("Key " ++ show k ++ " down") return w
+handleInputIO (EventKey (Char k) Up _ _) (World b t sts bt wt v r go) 
+    | k == 'h'  = return (World b t sts bt wt (not v) r go)
+    | k == 'u'  = return $ undoTurn (World b t sts bt wt v r go)
+    | k == 'r'  = do args <- getArgs
+                     return (initWorld args)
+      | otherwise = return (World b t sts bt wt v r go)
 
+handleInputIO e w = return w
 
 --Snaps the x mouse coordinate to the x grid coordinate
 --snapX = floor((x + gridPos)/rectSize)
