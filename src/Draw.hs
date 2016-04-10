@@ -1,4 +1,4 @@
-module Draw(drawWorldBMP, width, gridPos, rectSize, pieceSize) where
+module Draw where
 
 import Graphics.Gloss
 import Board
@@ -69,47 +69,82 @@ gameOverScreen :: Picture
 gameOverScreen = bmp "res/gameover.bmp"
 
 -- ^ Draws the world and information based on its state
-drawWorldBMP :: World    -- ^ The world which is to be drawn 
-             -> Picture
+--drawWorldBMP :: World    -- ^ The world which is to be drawn 
+--             -> Picture
 
+----Draw gameover
+--drawWorldBMP (World (Board sz ps pieces) turn _ _ _ _ _ True ) = pictures [ gameOverScreen, (drawText (getWinner (Board sz ps pieces)) 0 0)]
+
+---- Draws hints for reversi start
+--drawWorldBMP (World (Board sz ps pieces) turn _ _ _ True True _ ) = 
+--       pictures [ (drawBoardBMP sz)
+--                , (drawHints sz (checkStart (Board sz ps pieces)))
+--                , (drawPiecesBMP sz pieces)
+--                , drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
+--                , drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
+--                ]
+
+----Draw hints
+--drawWorldBMP (World (Board sz ps pieces) turn _ _ _ True _ _) = 
+--       pictures [ (drawBoardBMP sz)
+--                , (drawHints sz (checkAvailable (Board sz ps pieces) (0,0) turn))
+--                , (drawPiecesBMP sz pieces)
+--                , drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
+--                , drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
+--                ]
+
+
+---- Draw otherwise
+--drawWorldBMP (World (Board sz ps pieces) _ _ _ _ _ _ _ ) = 
+--    pictures     [ (drawBoardBMP sz)
+--                , (drawPiecesBMP sz pieces)
+--                , drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
+--                , drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
+--                ]
+
+--IO version of draw world
+drawWorldIO :: World -> IO Picture
 --Draw gameover
-drawWorldBMP (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True ) = pictures [gameOverScreen, (drawText (getWinner (Board sz ps pc) btime wtime) 0 0)]
+drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True ) = 
+    return $ pictures [gameOverScreen, (drawText (getWinner (Board sz ps pc) btime wtime) 0 0)]
 
-drawWorldBMP (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ ) = pictures [gameOverScreen, (drawText ("PAUSED") 0 0)]
+drawWorldIO (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ ) = 
+    return $ pictures [gameOverScreen, (drawText ("PAUSED") 0 0)]
 
 -- Draws hints for reversi start
-drawWorldBMP (World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ ) = 
-       pictures [ (drawBoardBMP sz)
-                , (drawHints sz (checkStart (Board sz ps pc)))
-                , (drawPiecesBMP sz pc)
-				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
-				, drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
-				, drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
-				, drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
-                ]
+drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ ) = 
+    return $ pictures [ (drawBoardBMP sz)
+                      , (drawHints sz (checkStart (Board sz ps pc)))
+                      , (drawPiecesBMP sz pc)
+                      , drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
+                      , drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
+                      , drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
+                      , drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
+                      ]
 
 --Draw hints
-drawWorldBMP (World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _) = 
-       pictures [ (drawBoardBMP sz)
-                , (drawHints sz (checkAvailable (Board sz ps pc) (0,0) turn))
-                , (drawPiecesBMP sz pc)
-				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
-				, drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
-				, drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
-				, drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
-                ]
+drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _) = 
+    return $ pictures [ (drawBoardBMP sz)
+                      , (drawHints sz (checkAvailable (Board sz ps pc) (0,0) turn))
+                      , (drawPiecesBMP sz pc)
+                      , drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
+                      , drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
+                      , drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
+                      , drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
+                      ]
 
 
 -- Draw otherwise
-drawWorldBMP (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ ) = 
-	pictures 	[ (drawBoardBMP sz)
-				, (drawPiecesBMP sz pc)
-				, drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
-				, drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
-				, drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
-				, drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
-				]
+drawWorldIO (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ ) = 
+    return $ pictures [ (drawBoardBMP sz)
+                      , (drawPiecesBMP sz pc)
+                      , drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
+                      , drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
+                      , drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
+                      , drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
+                      ]
 
+{- Draw for individual components -}
 
 -- | Draws the empty board
 drawBoardBMP :: Int      -- ^ The size of the board

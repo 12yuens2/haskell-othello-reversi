@@ -115,30 +115,23 @@ mapEvaluate depth ((p, tree):xs) c = trace ("evluating... move " ++ show(p)++ "a
 --yusukiMove depth gametree = undefined --keep going down to the given depth
 
 -- Update the world state after some time has passed
-updateWorld :: Float -- ^ time since last update (you can ignore this)
-            -> World -- ^ current world state
-            -> World
-           
--- give unlimited time for starting placement?
-updateWorld _ (World b c sts bt wt btime wtime p v True go) = World b c sts bt wt btime wtime p v True go
-updateWorld _ (World b c sts bt wt btime wtime p v r go) 
-            | gameOver b || btime <= 0 || wtime <= 0 = World b c sts bt wt btime wtime p v r True
-
-                                                       -- let (x,y) = checkScore b
-                                                       --    result | x == y    = error "Game is a draw"
-                                                       --           | x > y     = error "Black wins!"
-                                                       --           | otherwise = error "White wins!"
-                                                       --in result
-            | p                                      = World b c sts bt wt btime wtime p v r go
-            | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go
-            | c == Black && bt == Human     = World b {passes = 0} c sts bt wt (btime-10) wtime p v False go
-            | c == White && wt == Human     = World b {passes = 0} c sts bt wt btime (wtime-10) p v False go
+updateWorldIO :: Float -- ^ time since last update (you can ignore this)
+              -> World -- ^ current world state
+              -> IO World
+updateWorldIO _ (World b c sts bt wt btime wtime p v True go) 
+            = return $ World b c sts bt wt btime wtime p v True go
+updateWorldIO _ (World b c sts bt wt btime wtime p v r go) 
+            | gameOver b || btime <= 0 || wtime <= 0 = return $ World b c sts bt wt btime wtime p v r True
+            | p                                      = return $ World b c sts bt wt btime wtime p v r go
+            | not (validMovesAvailable b c) = return $ trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go
+            | c == Black && bt == Human     = return $ World b {passes = 0} c sts bt wt (btime-10) wtime p v False go
+            | c == White && wt == Human     = return $ World b {passes = 0} c sts bt wt btime (wtime-10) p v False go
             | otherwise = let
                           tree = buildTree genAllMoves b c
                           nextMove = yusukiMove 2 tree in
                                      case makeMove b nextMove c of
                                           Nothing -> error("not possible moves not implemented")
-                                          Just b' -> (World (b' {passes = 0}) (other c) sts bt wt btime wtime p v False go)
+                                          Just b' -> return $ (World (b' {passes = 0}) (other c) sts bt wt btime wtime p v False go)
 
 {- Hint: 'updateWorld' is where the AI gets called. If the world state
  indicates that it is a computer player's turn, updateWorld should use

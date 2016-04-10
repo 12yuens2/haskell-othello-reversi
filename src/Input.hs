@@ -1,4 +1,4 @@
-module Input(handleInput) where
+module Input where
 
 {-# LANGUAGE MultiWayIf #-}
 
@@ -19,38 +19,37 @@ import Debug.Trace
 -- trace :: String -> a -> a
 -- 'trace' returns its second argument while printing its first argument
 -- to stderr, which can be a very useful way of debugging!
-handleInput :: Event -> World -> World
+handleInputIO :: Event -> World -> IO World
 --handleInput (EventMotion (x, y)) w 
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v True go)
-    | x' < 0 || x' >= sz || y' < 0 || y' >= sz || p= (World (Board sz ps pc) t sts bt wt btime wtime p v True go) 
+handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v True go)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz || p = return (World (Board sz ps pc) t sts bt wt btime wtime p v True go)
     | otherwise
     = case (startMove (Board sz ps pc) (x', y') t) of
-           Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (startState (pieces b)) go)
-           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt btime wtime p v True go)
+           Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (startState (pieces b)) go)
+           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v True go)
     where x' = snapX sz x
           y' = snapY sz y
 
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
-    | x' < 0 || x' >= sz || y' < 0 || y' >= sz || p = (World (Board sz ps pc) t sts bt wt btime wtime p v r go) 
+handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz || p = return (World (Board sz ps pc) t sts bt wt btime wtime p v r go) 
     | otherwise
     = case (makeMove (Board sz ps pc) (x', y') t) of
-        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v r go)
-        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
+        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v r go)
+        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
     where x' = snapX sz x
           y' = snapY sz y
 
-handleInput (EventKey (Char k) Down _ _) w
-    = trace ("Key " ++ show k ++ " down") w
-handleInput (EventKey (Char k) Up _ _) (World b t sts bt wt btime wtime p v r go) 
-		| k == 'h' && (not p) = (World b t sts bt wt btime wtime p (not v) r go)
-		| k == 'u' && (not p) = undoTurn (World b t sts bt wt btime wtime p v r go)
-        | k == 'p'            = (World b t sts bt wt btime wtime (not p) v r go)
-		| k == 'r' && (not p) = let args = unsafePerformIO $ getArgs in
-						        (initWorld args)
-	  	| otherwise = (World b t sts bt wt btime wtime p v r go)
-handleInput e w = w
-
+handleInputIO (EventKey (Char k) Down _ _) w
+        = return $ trace ("Key " ++ show k ++ " down") w
+handleInputIO (EventKey (Char k) Up _ _) (World b t sts bt wt btime wtime p v r go) 
+        | k == 'h' && (not p) = return (World b t sts bt wt btime wtime p (not v) r go)
+        | k == 'u' && (not p) = return $ undoTurn (World b t sts bt wt btime wtime p v r go)
+        | k == 'p'            = return (World b t sts bt wt btime wtime (not p) v r go)
+        | k == 'r' && (not p) = let args = unsafePerformIO $ getArgs in
+                                return (initWorld args)
+        | otherwise           = return (World b t sts bt wt btime wtime p v r go)
+handleInputIO e w = return w
 
 --Snaps the x mouse coordinate to the x grid coordinate
 --snapX = floor((x + gridPos)/rectSize)
