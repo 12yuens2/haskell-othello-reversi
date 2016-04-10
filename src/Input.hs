@@ -19,15 +19,24 @@ import Debug.Trace
 handleInput :: Event -> World -> World
 --handleInput (EventMotion (x, y)) w 
 --    = trace ("Mouse moved to: " ++ show (x,y)) w
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pc) t sts bt wt v True)
-    = case (startMove (Board size passes pc) (snapX size x, snapY size y) t) of
-           Just b  -> trace ("Left button pressed at: " ++ show (snapX size x, snapY size y)) (World b (other t) (((Board size passes pc),t):sts) bt wt v (startState (pieces b)))
-           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX size x, snapY size y)) (World (Board size passes pc) t sts bt wt v True)
+handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v True)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = (World (Board sz ps pc) t sts bt wt v True) 
+    | otherwise
+    = case (startMove (Board sz ps pc) (x', y') t) of
+           Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) (((Board sz ps pc),t):sts) bt wt v (startState (pieces b)))
+           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt v True)
+    where x' = snapX sz x
+          y' = snapY sz y
 
-handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board size passes pieces) t sts bt wt v r)
-    = case (makeMove (Board size passes pieces) (snapX size x, snapY size y) t) of
-        Just b  -> trace ("Left button pressed at: " ++ show (snapX size x, snapY size y)) (World b (other t) (((Board size passes pieces),t):sts) bt wt v r)
-        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (snapX size x, snapY size y)) (World (Board size passes pieces) t sts bt wt v r)
+handleInput (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v r)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = (World (Board sz ps pc) t sts bt wt v r) 
+    | otherwise
+    = case (makeMove (Board sz ps pc) (x', y') t) of
+        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) (World b (other t) (((Board sz ps pc),t):sts) bt wt v r)
+        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) (World (Board sz ps pc) t sts bt wt v r)
+    where x' = snapX sz x
+          y' = snapY sz y
+
 handleInput (EventKey (Char 'u') Down _ _) w
     = undoTurn w
 handleInput (EventKey (Char k) Down _ _) w
@@ -44,7 +53,7 @@ handleInput e w = w
 snapX :: Int -> Float -> Int
 snapX s x = floor((x + gridPos)/(rectSize s))
 
---Snaps they mouse coordinate to the y grid coordinate
+--Snaps the mouse coordinate to the y grid coordinate
 --snapY = floor((gridPos - y)/rectSize)
 snapY :: Int -> Float -> Int
 snapY s y = floor((gridPos - y)/(rectSize s))
