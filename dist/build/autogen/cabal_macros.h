@@ -7,6 +7,13 @@
   (major1) == 4 && (major2) <  6 || \
   (major1) == 4 && (major2) == 6 && (minor) <= 0)
 
+/* package binary-0.7.6.1 */
+#define VERSION_binary "0.7.6.1"
+#define MIN_VERSION_binary(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  7 || \
+  (major1) == 0 && (major2) == 7 && (minor) <= 6)
+
 /* package gloss-1.8.1.2 */
 #define VERSION_gloss "1.8.1.2"
 #define MIN_VERSION_gloss(major1,major2,minor) (\

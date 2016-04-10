@@ -1,6 +1,7 @@
 module Board where
 
 import System.Environment
+import Data.Binary
 
 import Debug.Trace
 
@@ -48,7 +49,53 @@ data World = World { board :: Board,
                      chooseStart :: Bool,
                      gameIsOver :: Bool
                      }
+  deriving Show
 
+instance Binary World where
+  put (World b t sts bt wt v r go) = do put b
+                                        put t
+                                        put sts
+                                        put bt
+                                        put wt
+                                        put v
+                                        put r
+                                        put go
+  get = do b <- get
+           t <- get
+           sts <- get
+           bt <- get
+           wt <- get
+           v <- get
+           r <- get
+           go <- get
+           return (World b t sts bt wt v r go)
+
+
+instance Binary PlayerType where
+  put Human = do put (0 :: Word8)
+  put AI = do put (1 :: Word8)
+  get = do t <- get :: Get Word8
+           case t of 
+            0 -> return Human
+            1 -> return AI 
+
+instance Binary Col where
+  put Black = do put (0 :: Word8)
+  put White = do put (1 :: Word8)
+  get = do t <- get :: Get Word8
+           case t of 
+            0 -> return Black
+            1 -> return White
+
+
+instance Binary Board where
+  put (Board sz ps pc) = do put sz
+                            put ps
+                            put pc
+  get = do sz <- get
+           ps <- get
+           pc <- get
+           return (Board sz ps pc)
 
 
 -- | initialises the world based on the arguments passed to it
