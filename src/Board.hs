@@ -2,6 +2,7 @@ module Board where
 
 import System.Environment
 import Data.Binary
+--import Data.ByteString hiding (length, head, tail)
 
 import Debug.Trace
 
@@ -51,6 +52,7 @@ data World = World { board :: Board,
                      }
   deriving Show
 
+-- Boilerplate instances for data
 instance Binary World where
   put (World b t sts bt wt v r go) = do put b
                                         put t

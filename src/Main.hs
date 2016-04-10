@@ -44,5 +44,6 @@ main = do
 	  		(initWorld args)
 	  		drawWorldIO
 	  		handleInputIO
-	  		updateWorldIO
+	  		updateWorldNetwork
+	  		--updateWorldIO
 
