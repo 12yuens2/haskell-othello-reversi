@@ -145,27 +145,29 @@ updateWorldIO _ (World b c sts bt wt v r go)
                                                     Nothing -> error("not possible moves not implemented")
                                                     Just b' -> return ((World (b' {passes = 0}) (other c) sts bt wt v False go))
 
-
 --Network version of update world
 --assumes that the networked player is the 'AI'
-updateWorldNetwork :: Float -> World -> IO World
-updateWorldNetwork _ (World b c sts bt wt v True go) = return (World b c sts bt wt v True go)
-updateWorldNetwork _ (World b c sts bt wt v r go) 
+updateWorldNetwork :: Socket -> Bool -> Float -> World -> IO World
+updateWorldNetwork s _ _ (World b c sts bt wt v True go) = return (World b c sts bt wt v True go)
+updateWorldNetwork s False _ (World b c sts bt wt v r go) 
                                         | gameOver b = return (World b c sts bt wt v r True)
                                         | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") return (World (b {passes = (passes b) + 1}) (other c) sts bt wt v False go)
                                         | c == Black && bt == Human     = return (World b {passes = 0} c sts bt wt v False go)
                                         | c == White && wt == Human     = return (World b {passes = 0} c sts bt wt v False go)
                                         | otherwise = withSocketsDo $
-                                            do addrInfos <- getAddrInfo 
-                                                            (Just (defaultHints {addrFlags = [AI_PASSIVE]})) 
-                                                            Nothing (Just "48631")
-                                               let serverAddr  = head addrInfos
-                                               s <- socket (addrFamily serverAddr) Stream defaultProtocol
-                                               connect s (addrAddress serverAddr)
-                                               sendAll s $ encode (World b c sts bt wt v r go) 
+                                            do sendAll s $ encode (World b c sts (othert bt) (othert wt) v r go) 
                                                fromServer <- recv s 65536
-                                               sClose s
                                                return $ decode fromServer
+
+updateWorldNetwork s True _ (World b c sts bt wt v r go) 
+                                        | gameOver b = return (World b c sts bt wt v r True)
+                                        | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") return (World (b {passes = (passes b) + 1}) (other c) sts bt wt v False go)
+                                        | c == Black && bt == Human     = return (World b {passes = 0} c sts bt wt v False go)
+                                        | c == White && wt == Human     = return (World b {passes = 0} c sts bt wt v False go)
+                                        | otherwise = withSocketsDo $
+                                            do  inputByteString <- recv s 65536
+                                                return $ decode inputByteString
+
 
 
 

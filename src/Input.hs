@@ -6,6 +6,10 @@ import System.Environment
 
 import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss
+import Network.Socket hiding (sendAll, recv)
+import Network.Socket.ByteString.Lazy
+import Data.Binary
+
 import Board
 import AI
 import Draw
@@ -52,8 +56,8 @@ import Debug.Trace
 
 
 --IO version of handle input
-handleInputIO :: Event -> World -> IO World
-handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v True go)
+handleInputIO :: Socket -> Bool -> Event -> World -> IO World
+handleInputIO _ _ (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v True go)
     | x' < 0 || x' >= sz || y' < 0 || y' >= sz = return (World (Board sz ps pc) t sts bt wt v True go) 
     | otherwise
     = case (startMove (Board sz ps pc) (x', y') t) of
@@ -62,25 +66,42 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz p
     where x' = snapX sz x
           y' = snapY sz y
 
-handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v r go)
+--client acts as normal
+handleInputIO s False (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v r go)
     | x' < 0 || x' >= sz || y' < 0 || y' >= sz = return (World (Board sz ps pc) t sts bt wt v r go) 
     | otherwise
     = case (makeMove (Board sz ps pc) (x', y') t) of
-        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) (((Board sz ps pc),t):sts) bt wt v r go)
+        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ 
+            return (World b (other t) (((Board sz ps pc),t):sts) bt wt v r go)
         Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt v r go)
     where x' = snapX sz x
           y' = snapY sz y
 
-handleInputIO (EventKey (Char k) Down _ _) w
+
+--server sends move on click
+handleInputIO s True (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt v r go)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = return (World (Board sz ps pc) t sts bt wt v r go) 
+    | otherwise
+    = case (makeMove (Board sz ps pc) (x', y') t) of
+        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ 
+          do
+            let outputByteString = encode (World b (other t) (((Board sz ps pc),t):sts) (othert bt) (othert wt) v r go)
+              in sendAll s outputByteString
+            return (World b (other t) (((Board sz ps pc),t):sts) bt wt v r go)
+        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt v r go)
+    where x' = snapX sz x
+          y' = snapY sz y
+
+handleInputIO _ _ (EventKey (Char k) Down _ _) w
     = trace ("Key " ++ show k ++ " down") return w
-handleInputIO (EventKey (Char k) Up _ _) (World b t sts bt wt v r go) 
+handleInputIO _ _ (EventKey (Char k) Up _ _) (World b t sts bt wt v r go) 
     | k == 'h'  = return (World b t sts bt wt (not v) r go)
     | k == 'u'  = return $ undoTurn (World b t sts bt wt v r go)
     | k == 'r'  = do args <- getArgs
                      return (initWorld args)
       | otherwise = return (World b t sts bt wt v r go)
 
-handleInputIO e w = return w
+handleInputIO _ _ e w = return w
 
 --Snaps the x mouse coordinate to the x grid coordinate
 --snapX = floor((x + gridPos)/rectSize)
