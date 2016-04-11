@@ -43,9 +43,9 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz p
 handleInputIO (EventKey (Char k) Down _ _) w
         = return $ trace ("Key " ++ show k ++ " down") w
 handleInputIO (EventKey (Char k) Up _ _) (World b t sts bt wt btime wtime p v r go) 
-        | k == 'h' && (not p) = return (World b t sts bt wt btime wtime p (not v) r go)
-        | k == 'u' && (not p) = return $ undoTurn (World b t sts bt wt btime wtime p v r go)
-        | k == 'p'            = return (World b t sts bt wt btime wtime (not p) v r go)
+        | k == 'h' && (not p) && (not go) = return (World b t sts bt wt btime wtime p (not v) r go)
+        | k == 'u' && (not p) && (not go) = return $ undoTurn (World b t sts bt wt btime wtime p v r go)
+        | k == 'p'            && (not go) = return (World b t sts bt wt btime wtime (not p) v r go)
         | k == 'r' && (not p) = let args = unsafePerformIO $ getArgs in
                                 return (initWorld args)
         | otherwise           = return (World b t sts bt wt btime wtime p v r go)
@@ -62,9 +62,5 @@ snapY :: Int -> Float -> Int
 snapY s y = floor((gridPos - y)/(rectSize s))
 
 {- Hint: when the 'World' is in a state where it is the human player's
- turn to move, a mouse press event should calculate which board position
- a click refers to, and update the board accordingly.
-
- At first, it is reasonable to assume that both players are human players.
 -}
 

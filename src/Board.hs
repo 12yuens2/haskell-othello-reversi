@@ -107,26 +107,37 @@ checkAvailable :: Board      -- ^ The board to be checked
                -> Position   -- ^ The position to be checked
                -> Col        -- ^ The colour for checking whether this position would be a valid move
                -> [Position] -- ^ Returns True if a valid move is found and False otherwise
-checkAvailable b (x, y) c | x==(size b - 1) && y==(size b - 1) && isValidMove b (x,y) c = [(x,y)]
-                          | x==(size b - 1) && y==(size b - 1)    = []
-                          | y==(size b - 1) && isValidMove b (x,y) c = ((x,y):(checkAvailable b (x+1,0) c))
-                          | y==(size b - 1)                          = checkAvailable b (x+1, 0) c
-                          | isValidMove b (x,y) c                    = ((x,y):(checkAvailable b (x,y+1) c))
-                          | otherwise                                = checkAvailable b (x,y+1) c
+checkAvailable b (x, y) c | x==(size b - 1) 
+                         && y==(size b - 1) 
+                         && isValidMove b (x,y) c = [(x,y)]
+                          | x==(size b - 1) 
+                         && y==(size b - 1)       = []
+                          | y==(size b - 1) 
+                         && isValidMove b (x,y) c = ((x,y):(checkAvailable b (x+1,0) c))
+                          | y==(size b - 1)       = checkAvailable b (x+1, 0) c
+                          | isValidMove b (x,y) c = ((x,y):(checkAvailable b (x,y+1) c))
+                          | otherwise             = checkAvailable b (x,y+1) c
 
 checkStart :: Board -> [Position]
 checkStart b = availableStart b (mid -1, mid -1)
                   where mid = div (size b) 2
 
 availableStart :: Board -> Position -> [Position]
-availableStart b (x, y) | x == (mid - 1) && y == (mid - 1) && containsPiece b (x,y) = availableStart b (mid,mid - 1)
-                        | x == (mid - 1) && y == (mid - 1)        = (x,y):(availableStart b (mid,mid - 1))
-                        | x == mid       && y == (mid - 1) && containsPiece b (x,y) = availableStart b (mid - 1,mid)
-                        | x == mid && y == (mid - 1)              = (x,y):(availableStart b (mid - 1,mid))
-                        | x == (mid -1) && containsPiece b (x,y)  = availableStart b (mid,mid)
-                        | x == (mid - 1)                          = (x,y):(availableStart b (mid,mid))
-                        | containsPiece b (x,y)                   = []
-                        | otherwise                               = [(x,y)]
+availableStart b (x, y) | x == (mid - 1) 
+                       && y == (mid - 1) 
+                       && containsPiece b (x,y) = availableStart b (mid,mid - 1)
+                        | x == (mid - 1) 
+                       && y == (mid - 1)        = (x,y):(availableStart b (mid,mid - 1))
+                        | x ==  mid 
+                       && y == (mid - 1) 
+                       && containsPiece b (x,y) = availableStart b (mid - 1,mid)
+                        | x ==  mid 
+                       && y == (mid - 1)        = (x,y):(availableStart b (mid - 1,mid))
+                        | x == (mid -1) 
+                       && containsPiece b (x,y) = availableStart b (mid,mid)
+                        | x == (mid - 1)        = (x,y):(availableStart b (mid,mid))
+                        | containsPiece b (x,y) = []
+                        | otherwise             = [(x,y)]
                             where mid = div (size b) 2
 
 
@@ -178,9 +189,9 @@ flipping :: Board -> [Position] -> Board
 flipping b possToFlip = Board (size b) (passes b) (flipPieces (pieces b) possToFlip)
 
 -- | Flips every piece in the pieces of the board based on the given list of positions
-flipPieces 	:: [(Position, Col)] 	-- ^ The list of pieces on the board
-			-> [Position] 			-- ^ The list of positions with pieces to be flipped
-			-> [(Position, Col)]	-- ^ Returns a list of pieces with pieces flipped
+flipPieces  :: [(Position, Col)]  -- ^ The list of pieces on the board
+            -> [Position]         -- ^ The list of positions with pieces to be flipped
+            -> [(Position, Col)]  -- ^ Returns a list of pieces with pieces flipped
 flipPieces [] _ = []
 flipPieces a [] = a
 flipPieces boardPieces (newPiece:newPieces) = (flipPieces (flipPiece boardPieces newPiece) newPieces)
@@ -189,60 +200,50 @@ flipPieces boardPieces (newPiece:newPieces) = (flipPieces (flipPiece boardPieces
 flipPiece :: [(Position,Col)] -> Position -> [(Position,Col)]
 flipPiece [] _ = []
 flipPiece (((x,y),c):pieces) (newX, newY)
-	= if x == newX && y == newY
-		then ((x,y),(other c)):pieces --return when a piece has been flipped
-		else ((x,y),c):(flipPiece pieces (newX,newY))
+    = if x == newX && y == newY
+        then ((x,y),(other c)):pieces --return when a piece has been flipped
+        else ((x,y),c):(flipPiece pieces (newX,newY))
 
 
 
 
 -- | Checks the board for any pieces that would be flipped 
-checkFlips 	:: [Position] 	-- ^ The list of positions that have pieces to be flipped
-			-> Board 		-- ^ The 'Board' to check if positions contain pieces and the colours of pieces
-			-> Position 	-- ^ The 'Position' where the move has been made
-			-> Position 	-- ^ The position offset used to check in a specific direction (eg, (0,-1) for North, (1,-1) for NorthEast)
-			-> Col 			-- ^ The 'Col' which we are flipping the pieces to
-			-> [Position]	-- ^ The return type. The fuction either returns its first argument or an empty list
+checkFlips :: [Position]  -- ^ The list of positions that have pieces to be flipped
+           -> Board       -- ^ The 'Board' to check if positions contain pieces and the colours of pieces
+           -> Position    -- ^ The 'Position' where the move has been made
+           -> Position    -- ^ The position offset used to check in a specific direction (eg, (0,-1) for North, (1,-1) for NorthEast)
+           -> Col         -- ^ The 'Col' which we are flipping the pieces to
+           -> [Position]  -- ^ The return type. The fuction either returns its first argument or an empty list
 checkFlips returnList b (x,y) (xOffset, yOffset) c = 
-	let 
-		x' = x + xOffset
-		y' = y + yOffset
-	in 
-		if containsPiece b (x',y')
-			then if getPieceColor b (x',y') /= c
-				then checkFlips ((x',y'):returnList) b (x',y') (xOffset,yOffset) c
-				else returnList
-		else []
+    let 
+        x' = x + xOffset
+        y' = y + yOffset
+    in 
+        if containsPiece b (x',y')
+            then if getPieceColor b (x',y') /= c
+                then checkFlips ((x',y'):returnList) b (x',y') (xOffset,yOffset) c
+                else returnList
+        else []
 
 -- | Checks that the given position of the board contains a piece
 containsPiece :: Board -> Position -> Bool
 containsPiece (Board s p []) (x,y) = False
 containsPiece (Board s p (piece:pieces)) (x,y) 
-	= if (fst (fst piece)) == x && (snd (fst piece)) == y
-		then True
-		else containsPiece (Board s p pieces) (x,y)
+    = if (fst (fst piece)) == x && (snd (fst piece)) == y
+        then True
+        else containsPiece (Board s p pieces) (x,y)
 
 
--- | Gets the colour of the piece at the given position. Assume that a piece exists in that position
-getPieceColor :: Board -> Position -> Col
+-- | Gets the colour of the piece at the given position. Assume that a piece 
+-- exists in that position
+getPieceColor :: Board     -- ^ The board to check
+              -> Position  -- ^ The position on the board to check
+              -> Col       -- ^ Returns the colour of the piece at this spot
 getPieceColor (Board s p []) (x,y) = error("No piece at that position")
 getPieceColor (Board s p (piece:pieces)) (x,y)
-	= if (fst (fst piece)) == x && (snd (fst piece)) == y
-		then snd piece
-		else getPieceColor (Board s p pieces) (x,y)
-
-
-
---currently unused
-posZipX :: Int -> [Int] -> [Position]
-posZipX x [] = []
-posZipX x (y:ys) = (x,y):(posZipX x ys)
-
---currently unused
-posZipY :: [Int] -> Int -> [Position]
-posZipY [] y = []
-posZipY (x:xs) y = (x,y):(posZipY xs y)
-
+    = if (fst (fst piece)) == x && (snd (fst piece)) == y
+        then snd piece
+        else getPieceColor (Board s p pieces) (x,y)
 
 
 -- | Check the current score
@@ -273,7 +274,8 @@ getPosY :: Position -> Float
 getPosY (x,y) = fromIntegral(y)
 
 
--- | Reverts world back to most recent move - only human player turns are recorded and reverted to
+-- | Reverts world back to most recent move - only human player turns are 
+-- recorded and reverted to
 undoTurn :: World  -- ^ The world to be reverted to the previos turn
          -> World  -- ^ returns the world in its previos turn
 undoTurn (World b c [] bt wt btime wtime p v r go) = 
