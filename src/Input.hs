@@ -11,6 +11,10 @@ import AI
 import Draw
 import System.IO.Unsafe (unsafePerformIO)
 
+import Network.Socket hiding (sendAll, recv)
+import Network.Socket.ByteString.Lazy
+import Data.Binary
+
 import Debug.Trace
 
 -- Update the world state given an input event. Some sample input events

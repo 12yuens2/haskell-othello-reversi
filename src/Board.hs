@@ -5,7 +5,7 @@ import System.Environment
 import Debug.Trace
 
 defaultBoardSize = 8
-startTime = 2000
+startTime = 20000
 
 data Col = Black | White
   deriving (Show, Eq)
@@ -265,6 +265,18 @@ evaluate Board {pieces = []}                _       = 0
 evaluate Board {pieces = ((_, colour1):xs), size = s} colour2  
         | colour1 == colour2 = (evaluate (Board s 0 xs) colour2) + 1
         | otherwise          = evaluate (Board s 0 xs) colour2
+
+
+--better score for corners
+evaluate2 :: Board -> Col -> Int
+evaluate2 Board {pieces = []}                _       = 0
+evaluate2 Board {pieces = (((x,y), colour1):xs), size = s} colour2  
+        | (x,y) == (0,0) || (x,y) == (0,s-1) || (x,y) == (s-1,0) || (x,y) == (s-1,s-1) 
+           = if colour1 == colour2 
+                then (evaluate2 (Board s 0 xs) colour2) + 1000
+                else (evaluate2 (Board s 0 xs) colour2) - 1000
+        | colour1 == colour2 = (evaluate2 (Board s 0 xs) colour2) + 1
+        | otherwise          = evaluate2 (Board s 0 xs) colour2
 
 
 getPosX :: Position -> Float

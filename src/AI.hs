@@ -65,51 +65,39 @@ yusukiMove depth (GameTree b c next_moves) = trace ("makeing best move possible"
       --snd $ maximum [(value, pos) | value <- evaluate ((makeMove b ) c), pos <- next_poss]
 
       bestPos :: Int -> Col -> [(Position, GameTree)] -> Position
-      bestPos depth c next_moves = snd $ maximum $ childrenList (depth-1) next_moves c
+      bestPos depth c next_moves = trace ("--" ++ show(childrenList (depth-1) next_moves c)) snd $ maximum $ childrenList (depth-1) next_moves c
 
-      --bestPos :: (Position, Int) -> Board -> Col -> [Position] -> (Position, Int)
-      --bestPos best_pos b c [] = best_pos
-
-      --bestPos (pos, value) b c (p:ps) = case makeMove b p c of
-      --    Nothing -> error("Couldn't get best move")
-      --    Just b' -> let x = (evaluate b' c) in 
-      --      case () of 
-      --        _ | x > value -> trace ("found better move" ++ show(x,p) ++ " better than " ++ show(value, pos)) $ bestPos (p, x) b c ps
-      --        _ | otherwise -> bestPos (pos, value) b c ps
-
---yusukiMove depth (GameTree b c ms) =         
 
 childrenList :: Int -> [(Position, GameTree)] -> Col -> [(Int, Position)]
 childrenList _ [] _ = []
-childrenList depth ((p,tree):xs) c = ((evaluateChildren depth tree c), p):(childrenList depth xs c)
+--childrenList depth ((p,tree):xs) c = ((evaluateChildren depth tree c (other c)), p):(childrenList depth xs c)
+childrenList depth ((p,tree):xs) c = ((evaluateChildren depth tree c c), p):(childrenList depth xs c)
 
---getMax :: Int -> [(Position, GameTree)] -> Col -> Int
---getMax maxPieces [] c = maxPieces
---getMax maxPieces ((_, GameTree {game_board = b}):xs) c | e > maxPieces   = getMax e xs
---                                                       | otherwise = getMax maxPieces xs 
---                                                       where
---                                                         e = evaluate b c
-
-
-makeList :: [(Position, GameTree)] -> Col -> [Int]
-makeList [] c = []
-makeList ((_, GameTree {game_board = b}):xs) c = (evaluate b c):(makeList xs c)
-
-getAverage :: [Int] -> Int
-getAverage [] = -64
-getAverage list = sum list `div` length list
 
 evaluateChildren  :: Int -- ^ Depth 
                   -> GameTree
-                  -> Col
+                  -> Col       -- ^ target colour
+                  -> Col       -- ^ current turn
                   -> Int
-evaluateChildren 0 GameTree {next_moves = ms} c = getAverage $ makeList ms c
-evaluateChildren depth GameTree {next_moves = children} c = getAverage (mapEvaluate depth children c) 
+evaluateChildren 0     GameTree {game_board = b} target current = evaluate2 b target
+evaluateChildren depth GameTree {next_moves = ms} target current | target == current = getMin $ makeList depth ms target current
+                                                                 | otherwise         = getMax $ makeList depth ms target current
 
-mapEvaluate :: Int -> [(Position, GameTree)] -> Col -> [Int]
-mapEvaluate _ [] _ = []
-mapEvaluate depth ((p, tree):xs) c = trace ("evluating... move " ++ show(p)++ "at depth " ++ show(depth)) $ (evaluateChildren (depth - 1) tree c): (mapEvaluate depth xs c)
+makeList :: Int                      -- ^ depth
+         -> [(Position, GameTree)]   -- ^ list of positions and gametrees they create
+         -> Col                      -- ^ Colour target
+         -> Col                      -- ^ colour of current turn
+         -> [Int]
+makeList _ [] _ _= []
+makeList depth ((_,tree):xs) target current = (evaluateChildren (depth-1) tree target (other current)):(makeList depth xs target current)
 
+getMax :: [Int] -> Int
+getMax [] = -100000   -- need to change
+getMax list = maximum list
+
+getMin :: [Int] -> Int
+getMin [] = -100000  -- need to change
+getMin list = minimum list
 
 --yusukiMove 0 gametree = --get best score and return up the tree
 --yusukiMove depth gametree = undefined --keep going down to the given depth
@@ -127,8 +115,8 @@ updateWorldIO _ (World b c sts bt wt btime wtime p v r go)
             | c == Black && bt == Human     = return $ World b {passes = 0} c sts bt wt (btime-10) wtime p v False go
             | c == White && wt == Human     = return $ World b {passes = 0} c sts bt wt btime (wtime-10) p v False go
             | otherwise = let
-                          tree = buildTree genAllMoves b c
-                          nextMove = yusukiMove 2 tree in
+                          tree = buildTree generateMoves b c
+                          nextMove = yusukiMove 5 tree in
                                      case makeMove b nextMove c of
                                           Nothing -> error("not possible moves not implemented")
                                           Just b' -> return $ (World (b' {passes = 0}) (other c) sts bt wt btime wtime p v False go)
