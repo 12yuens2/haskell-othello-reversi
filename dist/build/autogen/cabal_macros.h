@@ -28,3 +28,10 @@
   (major1) == 1 && (major2) <  8 || \
   (major1) == 1 && (major2) == 8 && (minor) <= 1)
 
+/* package network-2.6.2.1 */
+#define VERSION_network "2.6.2.1"
+#define MIN_VERSION_network(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  6 || \
+  (major1) == 2 && (major2) == 6 && (minor) <= 2)
+

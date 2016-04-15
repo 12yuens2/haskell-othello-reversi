@@ -16,6 +16,10 @@ other :: Col -> Col
 other Black = White
 other White = Black
 
+othert :: PlayerType -> PlayerType
+othert Human = AI
+othert AI = Human
+
 type Position = (Int, Int)
 
 -- A Board is a record containing the board size (a board is a square grid, n *
@@ -105,7 +109,12 @@ instance Binary Board where
   put (Board sz ps pc) = do put sz
                             put ps
                             put pc
-  get = do liftM3 Board get get get
+  --
+  -- get = do liftM3 Board get get get
+  get = do sz <- get
+           ps <- get
+           pc <- get
+           return (Board sz ps pc)
 
 
 -- | initialises the world based on the arguments passed to it
@@ -146,6 +155,7 @@ setArgs ("-r":xs)  w = setArgs xs (w {chooseStart = True})
 setArgs ("-ab":xs) w = setArgs xs (w {bType = AI})
 setArgs ("-aw":xs) w = setArgs xs (w {wType = AI})
 setArgs ("-v":xs)  w = setArgs xs (w {showValid = True})
+setArgs ("-server":xs) w = setArgs xs w
 setArgs (x:xs)     _ = error ("Unrecognised flag: " ++ x)
 
 -- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable

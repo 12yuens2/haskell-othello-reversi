@@ -3,6 +3,9 @@
 module AI where
 
 import System.Exit
+import Network.Socket hiding (sendAll, recv)
+import Network.Socket.ByteString.Lazy
+import Data.Binary
 
 import Board
 
@@ -102,6 +105,7 @@ getMin list = minimum list
 --yusukiMove 0 gametree = --get best score and return up the tree
 --yusukiMove depth gametree = undefined --keep going down to the given depth
 
+--for network testing purpose, updateworld is only AI
 -- Update the world state after some time has passed
 updateWorldIO :: Float -- ^ time since last update (you can ignore this)
               -> World -- ^ current world state
@@ -120,6 +124,44 @@ updateWorldIO _ (World b c sts bt wt btime wtime p v r go)
                                      case makeMove b nextMove c of
                                           Nothing -> error("not possible moves not implemented")
                                           Just b' -> return $ (World (b' {passes = 0}) (other c) sts bt wt btime wtime p v False go)
+
+--Network version of update world
+--assumes that the networked player is the 'AI'
+updateWorldNetwork :: Socket -> Bool -> Float -> World -> IO World
+updateWorldNetwork s _ _ (World b c sts bt wt btime wtime p v True go) = return (World b c sts bt wt btime wtime p v True go)
+updateWorldNetwork s False _ (World b c sts bt wt btime wtime p v r go) 
+                                        | gameOver b = return (World b c sts bt wt btime wtime p v r True)
+                                        | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") return (World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go)
+                                        | c == Black && bt == Human     = return (World b {passes = 0} c sts bt wt (btime-10) wtime p v False go)
+                                        | c == White && wt == Human     = return (World b {passes = 0} c sts bt wt btime (wtime-10) p v False go)
+                                        | otherwise = withSocketsDo $
+                                            do sendAll s $ encode (World b c sts (othert bt) (othert wt) btime wtime p v r go) 
+                                               fromServer <- recv s 65536
+                                               return $ decode fromServer
+
+updateWorldNetwork s True _ (World b c sts bt wt btime wtime p v r go) 
+                                        | gameOver b = return (World b c sts bt wt btime wtime p v r True)
+                                        | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") return (World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go)
+                                        | c == Black && bt == Human     = return (World b {passes = 0} c sts bt wt btime wtime p v False go)
+                                        | c == White && wt == Human     = return (World b {passes = 0} c sts bt wt btime wtime p v False go)
+                                        | otherwise = withSocketsDo $
+                                            do  inputByteString <- recv s 65536
+                                                return $ decode inputByteString
+
+
+
+
+
+--updateWorldNetwork _ w = withSocketsDo $
+--  do addrInfos <- getAddrInfo (Just (defaultHints {addrFlags = [AI_PASSIVE]})) Nothing (Just "15273")
+--     let serverAddr  = head addrInfos
+--     s <- socket (addrFamily serverAddr) Stream defaultProtocol
+--     connect s (addrAddress serverAddr)
+--     sendAll s $ encode w
+--     fromServer <- recv s 4096
+--     return $ decode fromServer
+
+
 
 {- Hint: 'updateWorld' is where the AI gets called. If the world state
  indicates that it is a computer player's turn, updateWorld should use

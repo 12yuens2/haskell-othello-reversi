@@ -4,6 +4,9 @@ import System.Environment
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
+import Network.Socket hiding (send, recv)
+import Network.Socket.ByteString.Lazy
+import Data.Binary
 
 -- import Network.Socket hiding (sendAll, recv)
 -- import Network.Socket.ByteString.Lazy
@@ -27,25 +30,83 @@ import AI
 -- and, if it is an AI's turn, should update the board with an AI generated
 -- move
 
---main :: IO ()
---main = do args <- getArgs
---          play (InWindow "Othello" (1200, 800) (10, 10)) 
---               black 
---               10
---               (initWorld args) -- in Board.hs
---               drawWorldBMP
---               --drawWorld        -- in Draw.hs
---               handleInput      -- in Input.hs
---               updateWorld      -- in AI.hs
-
+{-
+main :: IO ()
+main = do args <- getArgs
+          s <- socket (addrFamily serverAddr) Stream defaultProtocol
+          play (InWindow "Othello" (1200, 800) (10, 10)) 
+               black 
+               10
+               (initWorld args) -- in Board.hs
+               drawWorldIO
+               --drawWorld        -- in Draw.hs
+               handleInput      -- in Input.hs
+               updateWorld      -- in AI.hs
+-}
 
 main :: IO ()
 main = do 
-	args <- getArgs
-	playIO 	(InWindow "Othello" (1200,800) (10, 10))
-	  		black
-	  		10
-	  		(initWorld args)
-	  		drawWorldIO
-	  		handleInputIO
-	  		updateWorldIO
+        args <- getArgs
+        addrInfos <- getAddrInfo
+                   (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+                   Nothing (Just "21821")
+        let serverAddr = head addrInfos
+        s <- socket (addrFamily serverAddr) Stream defaultProtocol
+        playIO  (InWindow "Othello" (1200,800) (10, 10))
+                black
+                10
+                (initWorld args)
+                drawWorldIO
+                (handleInputIO s False)
+                (updateWorldNetwork s False)
+
+{-
+	withSocketsDo $ do 
+		args <- getArgs
+
+		addrInfos <- getAddrInfo
+				 (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+				 Nothing (Just "21821")
+		let serverAddr = head addrInfos
+
+		--create socket
+		s <- socket (addrFamily serverAddr) Stream defaultProtocol
+
+		if (head args) == "-server" 
+			then do
+				--bind to an address/port to listen to
+				bind s (addrAddress serverAddr)
+
+				--only allow 1 active connection
+				listen s 1
+
+				(conn, address) <- accept s
+
+				playIO 	(InWindow "Othello" (1200,800) (10, 10))
+				  		black
+				  		10
+				  		(initWorld args)
+				  		drawWorldIO
+				  		(handleInputIO conn True)
+				  		(updateWorldNetwork conn True)
+			
+			else connect s (addrAddress serverAddr)   
+
+		playIO 	(InWindow "Othello" (1200,800) (10, 10))
+					black
+			  		10
+			  		(initWorld args)
+			  		drawWorldIO
+			  		(handleInputIO s False)
+			  		(updateWorldNetwork s False)
+	
+
+		--playIO 	(InWindow "Othello" (1200,800) (10, 10))
+		--  		black
+		--  		10
+		--  		(initWorld args)
+		--  		drawWorldIO
+		--  		(handleInputIO s False)
+		--  		(updateWorldNetwork s False)
+		  		--updateWorldIO
+-}
