@@ -2,18 +2,21 @@ module Input where
 
 {-# LANGUAGE MultiWayIf #-}
 
+import Prelude hiding (writeFile, readFile)
 import System.Environment
-
+import Data.Binary
+import Data.ByteString.Lazy
 import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss
+
 import Board
 import AI
 import Draw
 import System.IO.Unsafe (unsafePerformIO)
 
-import Network.Socket hiding (sendAll, recv)
-import Network.Socket.ByteString.Lazy
-import Data.Binary
+-- import Network.Socket hiding (sendAll, recv)
+-- import Network.Socket.ByteString.Lazy
+-- import Data.Binary
 
 import Debug.Trace
 
@@ -46,13 +49,17 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz p
 
 handleInputIO (EventKey (Char k) Down _ _) w
         = return $ trace ("Key " ++ show k ++ " down") w
-handleInputIO (EventKey (Char k) Up _ _) (World b t sts bt wt btime wtime p v r go) 
-        | k == 'h' && (not p) && (not go) = return (World b t sts bt wt btime wtime p (not v) r go)
-        | k == 'u' && (not p) && (not go) = return $ undoTurn (World b t sts bt wt btime wtime p v r go)
-        | k == 'p'            && (not go) = return (World b t sts bt wt btime wtime (not p) v r go)
+handleInputIO (EventKey (Char k) Up _ _) w@(World { pause = p, gameIsOver = go})
+        | k == 'h' && (not p) && (not go) = return w { showValid = not (showValid w) }
+        | k == 'u' && (not p) && (not go) = return $ undoTurn w
+        | k == 'p'            && (not go) = return w { pause = not (pause w) }
         | k == 'r' && (not p) = let args = unsafePerformIO $ getArgs in
                                 return (initWorld args)
-        | otherwise           = return (World b t sts bt wt btime wtime p v r go)
+        | k == 's' && (not p) && (not go) = do writeFile "save.othello" (encode w)
+                                               return w
+        | k == 'l' && (not p) && (not go) = do fromFile <- readFile "save.othello"
+                                               return $ decode fromFile
+        | otherwise           = return w
 handleInputIO e w = return w
 
 --Snaps the x mouse coordinate to the x grid coordinate
