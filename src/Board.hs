@@ -36,7 +36,7 @@ data Board = Board { size :: Int,
                    }
   deriving Show
 
--- Default board is 8x8, neither played has passed, with 4 initial pieces 
+-- Default board is 8x8, neither played has passed, and is empty, filled later if not reversi
 initBoard = Board defaultBoardSize 0 []
 
 
@@ -72,6 +72,7 @@ data World = World { board :: Board,
                      }
   deriving Show
 
+-- probably don't need to encode server side info as cannot save when server running
 instance Binary World where
   put (World b t sts bt wt btime wtime p v r go sd sk) = do 
                                         put b
@@ -102,12 +103,16 @@ instance Binary World where
 
 -- Need to add for all four types possibly don't need Server and Client types
 instance Binary PlayerType where
-  put Server = do put (0 :: Word8)
-  put Client = do put (1 :: Word8)
+  put Human  = do put (0 :: Word8)
+  put AI     = do put (1 :: Word8)
+  put Server = do put (2 :: Word8)
+  put Client = do put (3 :: Word8)
   get = do t <- get :: Get Word8
            case t of 
-            0 -> return Server
-            1 -> return Client 
+            0 -> return Human
+            1 -> return AI 
+            2 -> return Server
+            3 -> return Client 
 
 instance Binary Col where
   put Black = do put (0 :: Word8)
@@ -142,9 +147,7 @@ initWorld args = do w <- (setArgs args (World initBoard Black [] Human Human sta
                                                            return serverW {sock = Just s, serverSide = False}
                                 | otherwise          -> do let startW = setBasePositions w
                                                                outputByteString = encode startW -- {sock = Nothing}
-                                                           putStrLn "!!\n"
                                                            sendAll s outputByteString
-                                                           putStrLn "!!\n"
                                                            return startW
 
 
