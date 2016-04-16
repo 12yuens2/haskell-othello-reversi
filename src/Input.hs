@@ -61,29 +61,40 @@ import Debug.Trace
 --handleInput e w = w
 
 
+
+
+
 --IO version of handle input
-handleInputIO :: Socket -> Bool -> Event -> World -> IO World
-handleInputIO _ _ (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v True go)
-    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = return (World (Board sz ps pc) t sts bt wt btime wtime p v True go) 
+handleInputIO :: Event -> World -> IO World
+handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v True go sd sk)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz = return (World (Board sz ps pc) t sts bt wt btime wtime p v True go sd sk) 
     | otherwise
     = case (startMove (Board sz ps pc) (x', y') t) of
-           Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (startState (pieces b)) go)
-           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v True go)
+           Just b -> case sk of
+                      Just s  -> trace ("Left button pressed at: " ++ show (x', y')) $
+                                     do sendAll s (encode b)
+                                        return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (startState (pieces b)) go sd sk)
+                      Nothing -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (startState (pieces b)) go sd sk)
+           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v True go sd sk)
     where x' = snapX sz x
           y' = snapY sz y
 
 --client acts as normal
-handleInputIO s False (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
-    | x' < 0 || x' >= sz || y' < 0 || y' >= sz || p = return (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
+handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v r go sd sk)
+    | x' < 0 || x' >= sz || y' < 0 || y' >= sz || p = return (World (Board sz ps pc) t sts bt wt btime wtime p v r go sd sk)
     | otherwise
     = case (makeMove (Board sz ps pc) (x', y') t) of
-        Just b  -> trace ("Left button pressed at: " ++ show (x', y')) $ 
-            return (World b (other t) (((Board sz ps pc),t,btime,wtime):sts) bt wt btime wtime p v r go)
-        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
+        Just b -> case sk of
+                   Just s  -> trace ("Left button pressed at: " ++ show (x', y')) $ 
+                                  do sendAll s (encode b)
+                                     return (World b (other t) (((Board sz ps pc),t,btime,wtime):sts) bt wt btime wtime p v r go sd sk)
+                   Nothing -> trace ("Left button pressed at: " ++ show (x', y')) $ 
+                                  return (World b (other t) (((Board sz ps pc),t,btime,wtime):sts) bt wt btime wtime p v r go sd sk)
+        Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v r go sd sk)
     where x' = snapX sz x
           y' = snapY sz y
 
-
+{-
 --server sends move on click
 handleInputIO s True (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
     | x' < 0 || x' >= sz || y' < 0 || y' >= sz || p = return (World (Board sz ps pc) t sts bt wt btime wtime p v r go) 
@@ -97,21 +108,21 @@ handleInputIO s True (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Boa
         Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v r go)
     where x' = snapX sz x
           y' = snapY sz y
-
-handleInputIO _ _ (EventKey (Char k) Down _ _) w
+-}
+handleInputIO (EventKey (Char k) Down _ _) w
     = trace ("Key " ++ show k ++ " down") return w
-handleInputIO _ _ (EventKey (Char k) Up _ _) w@(World b t sts bt wt btime wtime p v r go) 
+handleInputIO (EventKey (Char k) Up _ _) w@(World b t sts bt wt btime wtime p v r go sd sk) 
         | k == 'h' && (not p) && (not go) = return w { showValid = not (showValid w) }
-        | k == 'u' && (not p) && (not go) = return $ undoTurn w
-        | k == 'p'            && (not go) = return w { pause = not (pause w) }
-        | k == 'r' && (not p) = let args = unsafePerformIO $ getArgs in
-                                return (initWorld args)
-        | k == 's' && (not p) && (not go) = do writeFile "save.othello" (encode w)
-                                               return w
-        | k == 'l' && (not p) && (not go) = do fromFile <- readFile "save.othello"
-                                               return $ decode fromFile
+        | k == 'u' && (not p) && (not go) && sk == Nothing = return $ undoTurn w
+        | k == 'p'            && (not go) && sk == Nothing = return w { pause = not (pause w) }
+        | k == 'r' && (not p) && sk == Nothing = let args = unsafePerformIO $ getArgs in
+                                                 initWorld args
+        | k == 's' && (not p) && (not go) && sk == Nothing = do writeFile "save.othello" (encode w)
+                                                                return w
+        | k == 'l' && (not p) && (not go) && sk == Nothing = do fromFile <- readFile "save.othello"
+                                                                return $ decode fromFile
         | otherwise           = return w
-handleInputIO _ _ e w = return w
+handleInputIO e w = return w
 
 --Snaps the x mouse coordinate to the x grid coordinate
 --snapX = floor((x + gridPos)/rectSize)

@@ -105,14 +105,14 @@ gameOverScreen = bmp "res/gameover.bmp"
 --IO version of draw world
 drawWorldIO :: World -> IO Picture
 --Draw gameover
-drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True ) = 
+drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True _ _) = 
     return $ pictures [gameOverScreen, (drawText (getWinner (Board sz ps pc) btime wtime) 0 0)]
 
-drawWorldIO (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ ) = 
+drawWorldIO (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ _ _) = 
     return $ pictures [gameOverScreen, (drawText ("PAUSED") 0 0)]
 
 -- Draws hints for reversi start
-drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ ) = 
+drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ _ _) = 
     return $ pictures [ (drawBoardBMP sz)
                       , (drawHints sz (checkStart (Board sz ps pc)))
                       , (drawPiecesBMP sz pc)
@@ -123,7 +123,7 @@ drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ ) =
                       ]
 
 --Draw hints
-drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _) = 
+drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _ _ _) = 
     return $ pictures [ (drawBoardBMP sz)
                       , (drawHints sz (checkAvailable (Board sz ps pc) (0,0) turn))
                       , (drawPiecesBMP sz pc)
@@ -135,7 +135,7 @@ drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _) =
 
 
 -- Draw otherwise
-drawWorldIO (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ ) = 
+drawWorldIO (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ _ _) = 
     return $ pictures [ (drawBoardBMP sz)
                       , (drawPiecesBMP sz pc)
                       , drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)

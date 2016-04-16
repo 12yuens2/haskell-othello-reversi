@@ -1,5 +1,9 @@
 module Board where
 
+import Network.Socket hiding (send, recv)
+import Network.Socket.ByteString.Lazy
+import Data.Binary
+
 import System.Environment
 import Data.Binary
 import Control.Monad
@@ -34,9 +38,14 @@ data Board = Board { size :: Int,
 
 -- Default board is 8x8, neither played has passed, with 4 initial pieces 
 initBoard = Board defaultBoardSize 0 []
+
+
 -- | PlayerType represents whether the player is Human or AI (more types
 -- can be added in future for different AI types)
-data PlayerType = Human | AI
+data PlayerType = Human 
+                | AI
+                | Client
+                | Server
   deriving (Show, Eq)
 
 -- Overall state is the board and whose turn it is, plus any further
@@ -57,12 +66,14 @@ data World = World { board :: Board,
                      pause :: Bool,
                      showValid :: Bool,
                      chooseStart :: Bool,
-                     gameIsOver :: Bool
+                     gameIsOver :: Bool,
+                     serverSide :: Bool,
+                     sock       :: Maybe Socket   -- use <- to extract from just
                      }
   deriving Show
 
 instance Binary World where
-  put (World b t sts bt wt btime wtime p v r go) = do 
+  put (World b t sts bt wt btime wtime p v r go sd sk) = do 
                                         put b
                                         put t
                                         put sts
@@ -74,6 +85,7 @@ instance Binary World where
                                         put v
                                         put r
                                         put go
+                                        put sd
   get = do b <- get
            t <- get
            sts <- get
@@ -85,16 +97,17 @@ instance Binary World where
            v <- get
            r <- get
            go <- get
-           return (World b t sts bt wt btime wtime p v r go)
+           sd <- get
+           return (World b t sts bt wt btime wtime p v r go sd Nothing)
 
-
+-- Need to add for all four types possibly don't need Server and Client types
 instance Binary PlayerType where
-  put Human = do put (0 :: Word8)
-  put AI = do put (1 :: Word8)
+  put Server = do put (0 :: Word8)
+  put Client = do put (1 :: Word8)
   get = do t <- get :: Get Word8
            case t of 
-            0 -> return Human
-            1 -> return AI 
+            0 -> return Server
+            1 -> return Client 
 
 instance Binary Col where
   put Black = do put (0 :: Word8)
@@ -117,29 +130,61 @@ instance Binary Board where
            return (Board sz ps pc)
 
 
+
 -- | initialises the world based on the arguments passed to it
-initWorld :: [String]  -- ^ List of command line arguments
-          -> World     -- ^ Returns initialised world
-initWorld args = setBasePositions (setArgs args (World initBoard Black [] Human Human startTime startTime False False False False))
+initWorld :: [String]     -- ^ List of command line arguments
+          -> IO World     -- ^ Returns initialised world
+initWorld args = do w <- (setArgs args (World initBoard Black [] Human Human startTime startTime False False False False True Nothing))
+                    case sock w of
+                        Nothing -> return $ setBasePositions w
+                        Just s  | not (serverSide w) -> do inputByteString <- recv s 65536
+                                                           let serverW = decode inputByteString
+                                                           return serverW {sock = Just s, serverSide = False}
+                                | otherwise          -> do let startW = setBasePositions w
+                                                               outputByteString = encode startW -- {sock = Nothing}
+                                                           putStrLn "!!\n"
+                                                           sendAll s outputByteString
+                                                           putStrLn "!!\n"
+                                                           return startW
+
 
 -- | Sets 4 starting positions in world boars 
 setBasePositions :: World  -- ^ The world to set positions in 
                  -> World  -- ^ Returns world updated with updated positoins
-setBasePositions (World (Board sz ps _) t sts bt wt btime wtime p v False go)
+setBasePositions w@(World (Board sz ps _) _ _ _ _ _ _ _ _ False _ _ _)
                  = let mid = div sz 2 in
-                       World (Board sz ps 
-                             [((mid-1,mid-1), Black), ((mid-1,mid), White),
-                             ((mid,mid-1), White), ((mid,mid), Black)]) 
-                             t sts bt wt btime wtime p v False go
-setBasePositions (World b t sts bt wt btime wtime p v True go) = World b t sts bt wt btime wtime p v True go
+                       w {board =  (Board sz ps 
+                                    [((mid-1,mid-1), Black), ((mid-1,mid), White),
+                                    ((mid,mid-1), White), ((mid,mid), Black)]
+                                   )} 
+setBasePositions w@(World _ _ _ _ _ _ _ _ _ True _ _ _) = w
 
 
 -- | Takes a default world from initWorld and alters it depending on arguments
 setArgs :: [String]  -- ^ List of command line arguments
         -> World     -- ^ The world to alter depending on flags
-        -> World     -- ^ Returns a world updated depending on flags
-setArgs [] w = w
-setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt btime wtime p v r go) 
+        -> IO World     -- ^ Returns a world updated depending on flags
+setArgs [] w = return w
+setArgs ("-server":xs) w = do addrInfos <- getAddrInfo
+                                           (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+                                           Nothing (Just "21821")
+                              let serverAddr = head addrInfos
+                              s <- socket (addrFamily serverAddr) Stream defaultProtocol
+                              bind s (addrAddress serverAddr)
+                              listen s 1
+                              (conn, address) <- accept s
+                              setArgs xs (w {sock = Just conn, bType = Server, wType = Client})
+
+setArgs ("-client":xs) w = do addrInfos <- getAddrInfo
+                                           (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+                                           Nothing (Just "21821")
+                              let serverAddr = head addrInfos
+                              s <- socket (addrFamily serverAddr) Stream defaultProtocol 
+                              connect s (addrAddress serverAddr)
+                              return w {sock = Just s, serverSide = False}
+
+setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt btime wtime p v r go sd sk) 
+                    -- possibly split into another function
                     | xs == [] = error "A number is required after -s flag to determine size of board"
                     | readResult == [] = error "An integer is required after the -s flag"
                     | (snd (head readResult)) == "" = 
@@ -147,7 +192,7 @@ setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt btime wtime p v r go)
                             result | val < 4   = error "Grid must be at least 4x4"
                                    | val > 16  = error "Grid cannot be larger than 16x16"
                                    | odd val   = error "Grid width must be even"
-                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt btime wtime p v r go)
+                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt btime wtime p v r go sd sk)
                             in result
                     | otherwise = error "An integer is required after -s"
                         where readResult = (reads (head xs)) :: [(Int, String)]
@@ -155,7 +200,6 @@ setArgs ("-r":xs)  w = setArgs xs (w {chooseStart = True})
 setArgs ("-ab":xs) w = setArgs xs (w {bType = AI})
 setArgs ("-aw":xs) w = setArgs xs (w {wType = AI})
 setArgs ("-v":xs)  w = setArgs xs (w {showValid = True})
-setArgs ("-server":xs) w = setArgs xs w
 setArgs (x:xs)     _ = error ("Unrecognised flag: " ++ x)
 
 -- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable
@@ -352,17 +396,15 @@ getPosY (x,y) = fromIntegral(y)
 -- recorded and reverted to
 undoTurn :: World  -- ^ The world to be reverted to the previos turn
          -> World  -- ^ returns the world in its previos turn
-undoTurn (World b c [] bt wt btime wtime p v r go) = 
-         trace ("Cannot undo further back than current state") 
-               (World b c [] bt wt btime wtime p v r go)
-undoTurn (World b c ((x,y,i,j):xs) Human Human btime wtime p v r go)  = 
+undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
+         trace ("Cannot undo further back than current state") w
+undoTurn w@(World _ _ ((x,y,i,j):xs) Human Human _ _ _ _ _ _ _ _)  = 
+         trace "Reverted to previous player turn" w {stateList = xs, bTimer = i, wTimer = j}
+undoTurn (World b Black ((x,y,i,j):xs) Human wt btime wtime p v r go sd sk) = 
          trace "Reverted to previous player turn" 
-               (World x y xs Human Human i j p v r go)
-undoTurn (World b Black ((x,y,i,j):xs) Human wt btime wtime p v r go) = 
+               (World x Black xs Human wt i j p v r go sd sk)
+undoTurn (World b White ((x,y,i,j):xs) bt Human btime wtime p v r go sd sk) = 
          trace "Reverted to previous player turn" 
-               (World x Black xs Human wt i j p v r go)
-undoTurn (World b White ((x,y,i,j):xs) bt Human btime wtime p v r go) = 
-         trace "Reverted to previous player turn" 
-               (World x White xs bt Human i j p v r go)
+               (World x White xs bt Human i j p v r go sd sk)
 undoTurn w = trace "Cannot revert during AI turn" w
 

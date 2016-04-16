@@ -47,6 +47,18 @@ main = do args <- getArgs
 main :: IO ()
 main = do 
         args <- getArgs
+        w <- initWorld args
+        playIO  (InWindow "Othello" (1200,800) (10, 10))
+                black
+                10
+                w
+                drawWorldIO
+                handleInputIO
+                updateWorldNetwork
+{-
+main :: IO ()
+main = do 
+        args <- getArgs
         addrInfos <- getAddrInfo
                    (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
                    Nothing (Just "21821")
@@ -59,7 +71,7 @@ main = do
                 drawWorldIO
                 (handleInputIO s False)
                 (updateWorldNetwork s False)
-
+-}
 {-
 	withSocketsDo $ do 
 		args <- getArgs
