@@ -1,5 +1,3 @@
-{-# LANGUAGE MultiWayIf #-}
-
 module AI where
 
 import System.Exit
@@ -105,47 +103,6 @@ getMin :: [Int] -> Int
 getMin [] = 10000
 getMin list = minimum list
 
-{-
---yusukiMove 0 gametree = --get best score and return up the tree
---yusukiMove depth gametree = undefined --keep going down to the given depth
-
---for network testing purpose, updateworld is only AI
--- Update the world state after some time has passed
-updateWorldIO :: Float -- ^ time since last update (you can ignore this)
-              -> World -- ^ current world state
-              -> IO World
-updateWorldIO _ (World b c sts bt wt btime wtime p v True go) 
-            = return $ World b c sts bt wt btime wtime p v True go
-updateWorldIO _ (World b c sts bt wt btime wtime p v r go) 
-            | gameOver b || btime <= 0 || wtime <= 0 = return $ World b c sts bt wt btime wtime p v r True
-            | p                                      = return $ World b c sts bt wt btime wtime p v r go
-            | not (validMovesAvailable b c) = return $ trace ("No valid moves for " ++ show c ++ " so their turn is skipped") World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go
-            | c == Black && bt == Human     = return $ World b {passes = 0} c sts bt wt (btime-10) wtime p v False go
-            | c == White && wt == Human     = return $ World b {passes = 0} c sts bt wt btime (wtime-10) p v False go
-            | otherwise = let
-                          tree = buildTree generateMoves b c
-                          nextMove = yusukiMove 5 tree in
-                                     case makeMove b nextMove c of
-                                          Nothing -> error("not possible moves not implemented")
-                                          Just b' -> return $ (World (b' {passes = 0}) (other c) sts bt wt btime wtime p v False go)
--}
-
---Network version of update world
---assumes that the networked player is the 'AI'
-updateWorldNetwork :: Float -> World -> IO World
-{-
-updateWorldNetwork _ (World b c sts bt wt btime wtime p v True go sd sk) = return (World b c sts bt wt btime wtime p v True go sd sk)
-updateWorldNetwork _ w@(World b c sts bt wt btime wtime p v r go sd sk) 
-                                        | gameOver b = return (World b c sts bt wt btime wtime p v r True sd sk)
-                                        -- NEED TO ADD PASSES OVER NETWORK
-                                        | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") return (World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go sd sk)
-                                        | c == Black && bt == Human     = return (World b {passes = 0} c sts bt wt (btime-10) wtime p v False go)
-                                        | c == White && wt == Human     = return (World b {passes = 0} c sts bt wt btime (wtime-10) p v False go)
-                                        | otherwise = withSocketsDo $
-                                            do sendAll s $ encode (World b c sts (othert bt) (othert wt) btime wtime p v r go) 
-                                               fromServer <- recv s 65536
-                                               return $ decode fromServer
--}
 
 -- can probably restructure function to be nicer
 updateWorldNetwork _ w@(World _ c _ _ _ _ _ _ _ True _ sd sk) 
@@ -183,34 +140,4 @@ updateWorldNetwork _ w@(World b c sts bt wt btime wtime p v r go sd sk)
                                                     do inputByteString <- recv s 65536
                                                        return $ World (decode inputByteString) (other c) sts bt wt btime wtime p v r go sd sk 
                         | otherwise -> return w
-
-
-
-
-
---updateWorldNetwork _ w = withSocketsDo $
---  do addrInfos <- getAddrInfo (Just (defaultHints {addrFlags = [AI_PASSIVE]})) Nothing (Just "15273")
---     let serverAddr  = head addrInfos
---     s <- socket (addrFamily serverAddr) Stream defaultProtocol
---     connect s (addrAddress serverAddr)
---     sendAll s $ encode w
---     fromServer <- recv s 4096
---     return $ decode fromServer
-
-
-
-{- Hint: 'updateWorld' is where the AI gets called. If the world state
- indicates that it is a computer player's turn, updateWorld should use
- 'getBestMove' to find where the computer player should play, and update
- the board in the world state with that move.
-
- At first, it is reasonable for this to be a random valid move!
-
- If both players are human players, the simple version above will suffice,
- since it does nothing.
-
- In a complete implementation, 'updateWorld' should also check if either 
- player has won and display a message if so.
--}
-
 

@@ -64,7 +64,7 @@ data World = World { board :: Board,
                      chooseStart :: Bool,
                      gameIsOver :: Bool,
                      serverSide :: Bool,
-                     sock       :: Maybe Socket   -- use <- to extract from just
+                     sock       :: Maybe Socket
                      }
   deriving Show
 
@@ -435,11 +435,10 @@ undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) =
 undoTurn w@(World _ _ ((x,y,i,j):xs) Human Human _ _ _ _ _ _ _ _)  = 
          trace "Reverted to previous player turn" 
          w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
-undoTurn (World _ Black ((x,y,i,j):xs) Human _ _ _ _ _ _ _ _ _) = 
+undoTurn w@(World _ Black ((x,y,i,j):xs) Human _ _ _ _ _ _ _ _ _) = 
          trace "Reverted to previous player turn" 
-               (World x Black xs Human wt i j p v r go sd sk)
                w {board = x, turn = Black, stateList = xs, bTimer = i, wTimer = j}
-undoTurn (World _ White ((x,y,i,j):xs) _ Human _ _ _ _ _ _ _ _) = 
+undoTurn w@(World _ White ((x,y,i,j):xs) _ Human _ _ _ _ _ _ _ _) = 
          trace "Reverted to previous player turn" 
                w {board = x, turn = White, stateList = xs, bTimer = i, wTimer = j}
 undoTurn w = trace "Cannot revert during AI turn" w
