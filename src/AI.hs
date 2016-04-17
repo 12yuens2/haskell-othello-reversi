@@ -9,6 +9,14 @@ import Board
 
 import Debug.Trace
 
+{-
+instance Monad Maybe where
+    return x = Just x
+    f >>= g = case f of
+            Nothing -> Nothing
+            (Just x) -> g x
+-}
+
 data GameTree = GameTree { game_board :: Board,
                            game_turn :: Col,
                            next_moves :: [(Position, GameTree)] }
@@ -104,40 +112,24 @@ getMin [] = 10000
 getMin list = minimum list
 
 
--- can probably restructure function to be nicer
-updateWorldNetwork _ w@(World _ c _ _ _ _ _ _ _ True _ sd sk) 
-            = case sk of
-                Nothing -> return w
-                Just s  | sd && c == White ||
-                          not sd && c == Black -> withSocketsDo $
-                                                    -- must check for end of reversi start
-                                                    do inputByteString <- recv s 65536
-                                                       let b = decode (inputByteString)
-                                                       return $ w {board = b, 
-                                                                   turn = (other c), 
-                                                                   chooseStart = (length (pieces b) < 4)
-                                                                  }
-                        | otherwise -> return w
 updateWorldNetwork _ w@(World b c sts bt wt btime wtime p v r go sd sk) 
-            | gameOver b || btime <= 0 || wtime <= 0 = return (World b c sts bt wt btime wtime p v r True sd sk)
-            | p                                      = return $ World b c sts bt wt btime wtime p v r go sd sk
-            | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") return (World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go sd sk)
-            | c == Black && bt == Human     = return (World b c sts bt wt (btime-10) wtime p v False go sd sk)
-            | c == White && wt == Human     = return (World b c sts bt wt btime (wtime-10) p v False go sd sk)
-            | c == White && wt == AI ||
-              c == Black && bt == AI = let
-                          tree = buildTree generateMoves b c
-                          nextMove = yusukiMove 5 tree in
-                                     case makeMove b nextMove c of
-                                          Nothing -> error("not possible moves not implemented")
-                                          Just b' -> return $ (World b' (other c) sts bt wt btime wtime p v False go sd sk)
-            -- Find better way of getting just here
-            -- WHOLE SECTION HERE NEEDS IMPROVED possibly pattern match again
-            | otherwise = case sk of
-                Nothing -> return w
-                Just s  | sd && c == White ||
-                          not sd && c == Black -> withSocketsDo $
-                                                    do inputByteString <- recv s 65536
-                                                       return $ World (decode inputByteString) (other c) sts bt wt btime wtime p v r go sd sk 
-                        | otherwise -> return w
-
+    | (not r && gameOver b) || btime <= 0 || wtime <= 0 = return w {gameIsOver = True}
+    | p || (r && sk == Nothing)          = return w
+    | not (r || validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
+                                           $ return w {board = b{passes = passes b + 1}, turn = other c}
+    | r || (sk /= Nothing && (sd && c == White || not sd && c == Black)) = 
+        case sk of
+          Just s -> withSocketsDo $
+            do inputByteString <- recv s 65536
+               let b' = decode (inputByteString)
+               return $ w {board = b', 
+                           turn = (other c), 
+                           chooseStart = (length (pieces b') < 4)
+                          }
+    | c == Black && bt == Human = return w {bTimer = btime - 10}
+    | c == White && wt == Human = return w {wTimer = wtime - 10}
+    | otherwise = let
+        tree = buildTree generateMoves b c
+        nextMove = yusukiMove 5 tree in case makeMove b nextMove c of
+                                  Nothing -> error("not possible moves not implemented")
+                                  Just b' -> return $ w {board = b', turn = other c}
