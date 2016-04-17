@@ -73,8 +73,8 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) (World (Board sz p
            Just b -> case sk of
                       Just s  -> trace ("Left button pressed at: " ++ show (x', y')) $
                                      do sendAll s (encode b)
-                                        return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (startState (pieces b)) go sd sk)
-                      Nothing -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (startState (pieces b)) go sd sk)
+                                        return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (Prelude.length (pieces b) < 4) go sd sk)
+                      Nothing -> trace ("Left button pressed at: " ++ show (x', y')) $ return (World b (other t) ((Board sz ps pc,t,btime,wtime):sts) bt wt btime wtime p v (Prelude.length (pieces b) < 4) go sd sk)
            Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return (World (Board sz ps pc) t sts bt wt btime wtime p v True go sd sk)
     where x' = snapX sz x
           y' = snapY sz y

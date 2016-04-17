@@ -20,10 +20,6 @@ other :: Col -> Col
 other Black = White
 other White = Black
 
-othert :: PlayerType -> PlayerType
-othert Human = AI
-othert AI = Human
-
 type Position = (Int, Int)
 
 -- A Board is a record containing the board size (a board is a square grid, n *
@@ -101,7 +97,7 @@ instance Binary World where
            sd <- get
            return (World b t sts bt wt btime wtime p v r go sd Nothing)
 
--- Need to add for all four types possibly don't need Server and Client types
+-- Binary encoding and decoding for PlayerType
 instance Binary PlayerType where
   put Human  = do put (0 :: Word8)
   put AI     = do put (1 :: Word8)
@@ -114,6 +110,7 @@ instance Binary PlayerType where
             2 -> return Server
             3 -> return Client 
 
+-- Binary encoding and decoding for colour
 instance Binary Col where
   put Black = do put (0 :: Word8)
   put White = do put (1 :: Word8)
@@ -122,13 +119,11 @@ instance Binary Col where
             0 -> return Black
             1 -> return White
 
-
+-- Binary encoding and decoding for board
 instance Binary Board where
   put (Board sz ps pc) = do put sz
                             put ps
                             put pc
-  --
-  -- get = do liftM3 Board get get get
   get = do sz <- get
            ps <- get
            pc <- get
@@ -142,16 +137,18 @@ initWorld :: [String]     -- ^ List of command line arguments
 initWorld args = do w <- (setArgs args (World initBoard Black [] Human Human startTime startTime False False False False True Nothing))
                     case sock w of
                         Nothing -> return $ setBasePositions w
+                        -- If client side for network get base world from server
+                        -- If server side then send base world to client
                         Just s  | not (serverSide w) -> do inputByteString <- recv s 65536
                                                            let serverW = decode inputByteString
                                                            return serverW {sock = Just s, serverSide = False}
                                 | otherwise          -> do let startW = setBasePositions w
-                                                               outputByteString = encode startW -- {sock = Nothing}
+                                                               outputByteString = encode startW
                                                            sendAll s outputByteString
                                                            return startW
 
 
--- | Sets 4 starting positions in world boars 
+-- | Sets 4 starting positions in world board 
 setBasePositions :: World  -- ^ The world to set positions in 
                  -> World  -- ^ Returns world updated with updated positoins
 setBasePositions w@(World (Board sz ps _) _ _ _ _ _ _ _ _ False _ _ _)
@@ -166,7 +163,7 @@ setBasePositions w@(World _ _ _ _ _ _ _ _ _ True _ _ _) = w
 -- | Takes a default world from initWorld and alters it depending on arguments
 setArgs :: [String]  -- ^ List of command line arguments
         -> World     -- ^ The world to alter depending on flags
-        -> IO World     -- ^ Returns a world updated depending on flags
+        -> IO World   -- ^ Returns a world updated depending on flags
 setArgs [] w = return w
 setArgs ("-server":xs) w = do addrInfos <- getAddrInfo
                                            (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
@@ -187,8 +184,7 @@ setArgs ("-client":xs) w = do let a = getAddrArg xs
                               connect s (addrAddress serverAddr)
                               return w {sock = Just s, serverSide = False}
 
-setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt btime wtime p v r go sd sk) 
-                    -- possibly split into another function
+setArgs ("-s":xs) w@(World (Board _ ps pc) _ _ _ _ _ _ _ _ _ _ _ _) 
                     | xs == [] = error "A number is required after -s flag to determine size of board"
                     | readResult == [] = error "An integer is required after the -s flag"
                     | (snd (head readResult)) == "" = 
@@ -196,10 +192,11 @@ setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt btime wtime p v r go sd sk)
                             result | val < 4   = error "Grid must be at least 4x4"
                                    | val > 16  = error "Grid cannot be larger than 16x16"
                                    | odd val   = error "Grid width must be even"
-                                   | otherwise = setArgs (tail xs) (World (Board (fst(head readResult)) ps pc) t sts bt wt btime wtime p v r go sd sk)
+                                   | otherwise = setArgs (tail xs) w {board = (Board (fst(head readResult)) ps pc)}
                             in result
                     | otherwise = error "An integer is required after -s"
                         where readResult = (reads (head xs)) :: [(Int, String)]
+
 setArgs ("-r":xs)  w = setArgs xs (w {chooseStart = True})
 setArgs ("-ab":xs) w = if sock w == Nothing   -- make sure ai doesn't take priority over server types
                           then setArgs xs (w {bType = AI})  
@@ -211,11 +208,11 @@ setArgs ("-h":xs)  w = setArgs xs (w {showValid = True})
 setArgs (x:xs)     _ = error ("Unrecognised flag: " ++ x)
 
 
--- | gets a server address from arguments
-getAddrArg :: [String] -> String
+-- | Gets a server address from arguments
+getAddrArg :: [String]  -- ^ List of arguments to get address from
+           -> String    -- ^ Returns the argument for host name if there is one
 getAddrArg [] = error "Error, host name argument required for client to connect to"
-getAddrArg xs = head xs  -- check if there is connection?
-
+getAddrArg xs = head xs
 
 
 -- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable
@@ -240,11 +237,18 @@ checkAvailable b (x, y) c | x==(size b - 1)
                           | isValidMove b (x,y) c = ((x,y):(checkAvailable b (x,y+1) c))
                           | otherwise             = checkAvailable b (x,y+1) c
 
-checkStart :: Board -> [Position]
+
+-- | Gets a list of unfilled starting positions, abstracts over availableStart
+-- Initial arguments
+checkStart :: Board       -- ^ Board to check
+           -> [Position]  -- ^ returns a list of unfilled starting positions
 checkStart b = availableStart b (mid -1, mid -1)
                   where mid = div (size b) 2
 
-availableStart :: Board -> Position -> [Position]
+-- | Loop through starting positions and get list of unfilled positions
+availableStart :: Board      -- ^ Board to check
+               -> Position   -- ^ position to check
+               -> [Position] -- ^ returns list of unfilled starting function
 availableStart b (x, y) | x == (mid - 1) 
                        && y == (mid - 1) 
                        && containsPiece b (x,y) = availableStart b (mid,mid - 1)
@@ -288,29 +292,38 @@ getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ s
                            seList = checkFlips []  b (x,y) (1, 1)   c
 
 -- | Play a move on the board; return 'Nothing' if the move is invalid
--- (e.g. outside the range of the board, there is a piece already there, or the move does not flip any opposing pieces)
-makeMove :: Board -> Position -> Col -> Maybe Board
+-- (e.g. outside the range of the board, there is a piece already there, or the 
+-- move does not flip any opposing pieces)
+makeMove :: Board        -- ^ Board to make move on
+         -> Position     -- ^ Position to place new piece
+         -> Col          -- ^ Colour of new piece to place
+         -> Maybe Board  -- ^ returns new board if move successful or Nothing if move was invalid
 makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
                    | length posList == 0     = Nothing
                    | otherwise               = Just (flipping (Board (size b) 0 (((x,y),c):(pieces b))) posList)
                    where
                        posList = getPosList b (x,y) c
 
-startMove :: Board -> Position -> Col -> Maybe Board
+-- | similar to makeMove but for placing pieces in starting positions
+startMove :: Board        -- ^ Board to place starting piece on
+          -> Position     -- ^ Positon to place starting piece
+          -> Col          -- ^ Colour of piece to place
+          -> Maybe Board  -- ^ Returns new board if move successful or Nothing if move was invalid
 startMove b (x,y) c | (containsPiece b (x,y)) = Nothing
                     | (x == mid || x == mid - 1) &&
                       (y == mid || y == mid - 1)    = Just (b {pieces = ((x,y),c):(pieces b)})
                     | otherwise                     = Nothing
                         where mid = div (size b) 2
 
-startState :: [(Position, Col)] -> Bool
-startState xs = (length xs) < 4 
 
 -- | Flips all the pieces in the given list of 'Position's
-flipping :: Board -> [Position] -> Board
-flipping b possToFlip = Board (size b) (passes b) (flipPieces (pieces b) possToFlip)
+flipping :: Board       -- ^ Board upon which to flip pieces
+         -> [Position]  -- ^ List of positions to flip
+         -> Board       -- ^ Returns new board with pieces flipped
+flipping b posToFlip = Board (size b) (passes b) (flipPieces (pieces b) posToFlip)
 
--- | Flips every piece in the pieces of the board based on the given list of positions
+
+-- | Flips pieces on the board based on the given list of positions
 flipPieces  :: [(Position, Col)]  -- ^ The list of pieces on the board
             -> [Position]         -- ^ The list of positions with pieces to be flipped
             -> [(Position, Col)]  -- ^ Returns a list of pieces with pieces flipped
@@ -318,15 +331,15 @@ flipPieces [] _ = []
 flipPieces a [] = a
 flipPieces boardPieces (newPiece:newPieces) = (flipPieces (flipPiece boardPieces newPiece) newPieces)
 
--- | Flips an individual piece
-flipPiece :: [(Position,Col)] -> Position -> [(Position,Col)]
+-- | Flips a single piece on the board
+flipPiece :: [(Position,Col)]  -- ^ List of pieces on the board
+          -> Position          -- ^ Piece to flip
+          -> [(Position,Col)]  -- ^ Returns a new board with the piece flipped
 flipPiece [] _ = []
 flipPiece (((x,y),c):pieces) (newX, newY)
     = if x == newX && y == newY
         then ((x,y),(other c)):pieces --return when a piece has been flipped
         else ((x,y),c):(flipPiece pieces (newX,newY))
-
-
 
 
 -- | Checks the board for any pieces that would be flipped 
@@ -347,8 +360,11 @@ checkFlips returnList b (x,y) (xOffset, yOffset) c =
                 else returnList
         else []
 
+
 -- | Checks that the given position of the board contains a piece
-containsPiece :: Board -> Position -> Bool
+containsPiece :: Board     -- ^ Board to check
+              -> Position  -- ^ Positon to check for containing a piece
+              -> Bool      -- ^ Returns true if position contains a piece and false otherwise
 containsPiece (Board s p []) (x,y) = False
 containsPiece (Board s p (piece:pieces)) (x,y) 
     = if (fst (fst piece)) == x && (snd (fst piece)) == y
@@ -370,57 +386,60 @@ getPieceColor (Board s p (piece:pieces)) (x,y)
 
 -- | Check the current score
 -- Returns a pair of the number of black pieces, and the number of white pieces
-checkScore :: Board -> (Int, Int)
+checkScore :: Board       -- ^ The board on which to check the current score
+           -> (Int, Int)  -- ^ Returns tuple with black score and white core
 checkScore b = (evaluate b Black, evaluate b White) 
 
 -- | Return true if the game is complete 
 -- (that is, either the board is full or there have been two consecutive passes)
-gameOver :: Board -> Bool
+gameOver :: Board  -- ^ Board to check for game being over
+         -> Bool   -- ^ Return true of game is over and false otherwise
 gameOver Board {passes = 2} = True
 gameOver Board {pieces = x, size = s} | (length x) < (s ^ 2) = False
                                       | otherwise            = True
 
 -- | An evaluation function for a minimax search. 
 -- Given a board and a colour return an integer indicating how good the board is for that colour.
-evaluate :: Board -> Col -> Int
-evaluate Board {pieces = []}                _       = 0
+evaluate :: Board  -- ^ The board to evaluate
+         -> Col    -- ^ The colour to evaluate the board for
+         -> Int    -- ^ Returns number of pieces on boards for chosen colour
+evaluate Board {pieces = []} _ = 0
 evaluate Board {pieces = ((_, colour1):xs), size = s} colour2  
         | colour1 == colour2 = (evaluate (Board s 0 xs) colour2) + 1
         | otherwise          = evaluate (Board s 0 xs) colour2
 
 
---better score for corners
-evaluate2 :: Board -> Col -> Int
-evaluate2 Board {pieces = []}                _       = 0
-evaluate2 Board {pieces = (((x,y), colour1):xs), size = s} colour2  
-        | (x,y) == (0,0) || (x,y) == (0,s-1) || (x,y) == (s-1,0) || (x,y) == (s-1,s-1) 
-           = if colour1 == colour2 
-                then (evaluate2 (Board s 0 xs) colour2) + 1000
-                else (evaluate2 (Board s 0 xs) colour2) - 1000
-        | colour1 == colour2 = (evaluate2 (Board s 0 xs) colour2) + 1
-        | otherwise          = evaluate2 (Board s 0 xs) colour2
-
-
-getPosX :: Position -> Float
-getPosX (x,y) = fromIntegral(x)
-
-getPosY :: Position -> Float
-getPosY (x,y) = fromIntegral(y)
+-- | evaluation function used by AI which scores specific positions higher
+-- depending on how valuable it is to capture that position
+yusukiEvaluate :: Board  -- ^ The board to evaluate
+               -> Col    -- ^ The colour to evaluate for
+               -> Int    -- ^ A score depending on how good the boardstate is for chosen colour
+yusukiEvaluate Board {pieces = []}                _       = 0
+yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2  
+        | (x,y) == (0,0) 
+       || (x,y) == (0,s-1) 
+       || (x,y) == (s-1,0) 
+       || (x,y) == (s-1,s-1) = if colour1 == colour2 
+                                  then (yusukiEvaluate (Board s 0 xs) colour2) + 1000
+                                  else (yusukiEvaluate (Board s 0 xs) colour2) - 1000
+        | colour1 == colour2 = (yusukiEvaluate (Board s 0 xs) colour2) + 1
+        | otherwise          = yusukiEvaluate (Board s 0 xs) colour2
 
 
 -- | Reverts world back to most recent move - only human player turns are 
 -- recorded and reverted to
-undoTurn :: World  -- ^ The world to be reverted to the previos turn
+undoTurn :: World  -- ^ The world to be reverted to the previuos turn
          -> World  -- ^ returns the world in its previos turn
 undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
          trace ("Cannot undo further back than current state") w
 undoTurn w@(World _ _ ((x,y,i,j):xs) Human Human _ _ _ _ _ _ _ _)  = 
-         trace "Reverted to previous player turn" w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
-undoTurn (World b Black ((x,y,i,j):xs) Human wt btime wtime p v r go sd sk) = 
+         trace "Reverted to previous player turn" 
+         w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
+undoTurn (World _ Black ((x,y,i,j):xs) Human _ _ _ _ _ _ _ _ _) = 
          trace "Reverted to previous player turn" 
                (World x Black xs Human wt i j p v r go sd sk)
-undoTurn (World b White ((x,y,i,j):xs) bt Human btime wtime p v r go sd sk) = 
+               w {board = x, turn = Black, stateList = xs, bTimer = i, wTimer = j}
+undoTurn (World _ White ((x,y,i,j):xs) _ Human _ _ _ _ _ _ _ _) = 
          trace "Reverted to previous player turn" 
-               (World x White xs bt Human i j p v r go sd sk)
+               w {board = x, turn = White, stateList = xs, bTimer = i, wTimer = j}
 undoTurn w = trace "Cannot revert during AI turn" w
-

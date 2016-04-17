@@ -82,7 +82,7 @@ evaluateChildren  :: Int -- ^ Depth
                   -> Col       -- ^ target colour
                   -> Col       -- ^ current turn
                   -> Int
-evaluateChildren 0     GameTree {game_board = b} target current = evaluate2 b target
+evaluateChildren 0     GameTree {game_board = b} target current = yusukiEvaluate b target
 evaluateChildren depth GameTree {next_moves = ms} target current | target == current = getMin $ makeList depth ms target current
                                                                  | otherwise         = getMax $ makeList depth ms target current
 
@@ -158,7 +158,7 @@ updateWorldNetwork _ w@(World _ c _ _ _ _ _ _ _ True _ sd sk)
                                                        let b = decode (inputByteString)
                                                        return $ w {board = b, 
                                                                    turn = (other c), 
-                                                                   chooseStart = (startState (pieces b))
+                                                                   chooseStart = (length (pieces b) < 4)
                                                                   }
                         | otherwise -> return w
 updateWorldNetwork _ w@(World b c sts bt wt btime wtime p v r go sd sk) 
