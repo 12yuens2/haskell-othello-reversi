@@ -5,7 +5,6 @@ import Board
 import Data.Tuple
 
 import Debug.Trace
-import System.IO.Unsafe (unsafePerformIO)
 
 width = 800.0
 height = 800.0
@@ -29,14 +28,14 @@ getCol White = white
 {- Drawing with Bitmap images -}
 
 
--- | converts an x position to an x position on the GUI for squares
-squarePosX :: Int
+-- | Converts an x position to an x position on the GUI for squares
+squarePosX :: Int   -- ^ Size of the grid
            -> Float -- ^ The position to be converted
            -> Float -- ^ Returns the converted position
 squarePosX s x = -gridPos + (pieceSize s) + ((rectSize s)* x) 
 
--- | converts an y position to an y position on the GUI for squares
-squarePosY :: Int
+-- | Converts an y position to an y position on the GUI for squares
+squarePosY :: Int   -- ^ Size of the grid
            -> Float -- ^ The position to be converted 
            -> Float -- ^ Returns the converted position
 squarePosY s y = gridPos - (pieceSize s) - ((rectSize s)* y) 
@@ -46,26 +45,28 @@ defaultSquareWidth = 8
 scaleFactor :: Int -> Float
 scaleFactor sz = defaultSquareWidth / fromIntegral(sz)
 
-bmp :: FilePath -> Picture
-bmp file =  unsafePerformIO $ loadBMP file
+-- | General fucntion to load a bitmap to an IO Picture
+bmp :: FilePath -> IO Picture
+bmp file = loadBMP file
 
 -- | Loads bmp picture of black piece
-blackPiece :: Picture
+blackPiece :: IO Picture
 blackPiece = bmp "res/black2.bmp"
 
 -- | Loads bmp picture of white piece
-whitePiece :: Picture 
+whitePiece :: IO Picture 
 whitePiece = bmp "res/white2.bmp"
 
 -- | Loads bmp picture of blank space
-blankPiece :: Picture
+blankPiece :: IO Picture
 blankPiece = bmp "res/blank.bmp"
 
 -- | Loads bmp picture of hint piece
-hintPiece :: Picture
+hintPiece :: IO Picture
 hintPiece = bmp "res/hint2.bmp"
 
-gameOverScreen :: Picture
+-- | Loads bmp picture of gameover
+gameOverScreen :: IO Picture
 gameOverScreen = bmp "res/gameover.bmp"
 
 -- ^ Draws the world and information based on its state
@@ -104,58 +105,57 @@ gameOverScreen = bmp "res/gameover.bmp"
 
 --IO version of draw world
 drawWorldIO :: World -> IO Picture
---Draw gameover
-drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True _ _) = 
-    return $ pictures [gameOverScreen, (drawText (getWinner (Board sz ps pc) btime wtime) 0 0)]
+-- Draw gameover
+drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True _ _) = do
+  gameover  <- gameOverScreen
+  text      <- drawText (getWinner (Board sz ps pc) btime wtime) 0 0
+  return $ pictures [gameover, text]
 
-drawWorldIO (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ _ _) = 
-    return $ pictures [gameOverScreen, (drawText ("PAUSED") 0 0)]
+-- Draw pause
+drawWorldIO (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ _ _) = do
+  pause <- gameOverScreen
+  text  <- drawText ("PAUSED") 0 0
+  return $ pictures [pause, text]
 
 -- Draws hints for reversi start
-drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ _ _) = 
-    return $ pictures [ (drawBoardBMP sz)
-                      , (drawHints sz (checkStart (Board sz ps pc)))
-                      , (drawPiecesBMP sz pc)
-                      , drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
-                      , drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
-                      , drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
-                      , drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
-                      ]
+drawWorldIO w@(World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ _ _) = do
+  hints <- drawHints sz (checkStart (Board sz ps pc))
+  world <- drawWorldIO w{ showValid = False, chooseStart = False}
+  return $ pictures [world, hints]
 
---Draw hints
-drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _ _ _) = 
-    return $ pictures [ (drawBoardBMP sz)
-                      , (drawHints sz (checkAvailable (Board sz ps pc) (0,0) turn))
-                      , (drawPiecesBMP sz pc)
-                      , drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
-                      , drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
-                      , drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
-                      , drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
-                      ]
+-- Draw hints
+drawWorldIO w@(World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _ _ _) = do
+  hints <- drawHints sz (checkAvailable (Board sz ps pc) (0,0) turn)
+  world <- drawWorldIO w{ showValid = False }
+  return $ pictures [world, hints]
 
 
 -- Draw otherwise
-drawWorldIO (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ _ _) = 
-    return $ pictures [ (drawBoardBMP sz)
-                      , (drawPiecesBMP sz pc)
-                      , drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) (-2300) (-500)
-                      , drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 0
-                      , drawText ("Black time: " ++ (show (div btime 100))) (-2300) (-1000)
-                      , drawText ("White time: " ++ (show (div wtime 100))) (-2300) (-1500)
-                      ]
+drawWorldIO (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ _ _) = do
+  board     <- drawBoardBMP sz
+  pieces    <- drawPiecesBMP sz pc
+  numBlack  <- drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) 1700 1000
+  numWhite  <- drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 1000
+  timeBlack <- drawText ("Time: " ++ (show (div btime 100))) 1700 (-500)
+  timeWhite <- drawText ("Time: " ++ (show (div wtime 100))) (-2300) (-500)
+  return $ pictures [ board, pieces
+                    , numBlack, numWhite
+                    ,timeBlack, timeWhite]
 
 {- Draw for individual components -}
 
 -- | Draws the empty board
 drawBoardBMP :: Int      -- ^ The size of the board
-             -> Picture
-drawBoardBMP sz = pictures (map (drawEmptyPiece sz) [(x,y) | x <- [0..(sz-1)], y <- [0..(sz-1)]])
+             -> IO Picture
+drawBoardBMP sz = do
+  emptyPiece <- mapM (drawEmptyPiece sz) [(x,y) | x <- [0..(sz-1)], y <- [0..(sz-1)]]
+  return $ pictures emptyPiece
 
 
--- ^ Gets a string stating the outcome of a game based on a board
-getWinner :: Board   -- The board to evaluate to find winner
-          -> Int     -- The current time left for white
-          -> Int
+-- | Gets a string stating the outcome of a game based on a board
+getWinner :: Board   -- ^ The board to evaluate to find winner
+          -> Int     -- ^ The current time left for black
+          -> Int     -- ^ The current time left for white
           -> String  -- Returns a string stating the winner
 getWinner b btime wtime | btime <= 0 = "Black ran out of time so White wins!"
                         | wtime <= 0 = "White ran out of time so Black wins!"
@@ -169,38 +169,50 @@ getWinner b btime wtime | btime <= 0 = "Black ran out of time so White wins!"
 drawText :: String   -- ^ String to draw
          -> Float    -- ^ x coordinate to draw at
          -> Float    -- ^ y coordinate to draw at
-         -> Picture
-drawText text x y = scale 0.25 0.25 $ translate x y $ Text text
+         -> IO Picture
+drawText text x y = return $ scale 0.25 0.25 $ translate x y $ Text text
 
 
 -- | Draw hint pc on the board
 drawHints :: Int         -- ^ The size of the board on which hints are being drawn
           -> [Position]  -- ^ The list of positions to put hint pc
-          -> Picture
-drawHints _ [] = Blank
-drawHints sz ((x,y):ps) = pictures [ (translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) hintPiece)
-                                , (drawHints sz ps)
-                                ]
+          -> IO Picture
+drawHints _ [] = return Blank
+drawHints sz ((x,y):ps) = do
+  hint <- hintPiece
+  hints <- drawHints sz ps
+  return $ pictures [ (translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) hint)
+                    , hints
+                    ]
 
 -- | Draw an empty space onto the board
 drawEmptyPiece :: Int       -- ^ The size of the board
                -> Position  -- ^ The position draw the empty space on the board
-               -> Picture
-drawEmptyPiece sz (x,y) = translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) blankPiece
+               -> IO Picture
+drawEmptyPiece sz (x,y) = do
+  blank <- blankPiece
+  return $ translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) blank
 
 
 -- | Draws pc onto the boards
 drawPiecesBMP :: Int                -- ^ The size of the board 
               -> [(Position, Col)]  -- ^ List of positions and colours for drawing pc
-              -> Picture
-drawPiecesBMP _ [] = Blank
-drawPiecesBMP sz (((x,y),col):ps) = pictures [drawPieceBMP sz (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) col, drawPiecesBMP sz ps]
+              -> IO Picture
+drawPiecesBMP _ [] = return Blank
+drawPiecesBMP sz (((x,y),col):ps) = do
+  piece <- drawPieceBMP sz (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) col
+  pieces <- drawPiecesBMP sz ps
+  return $ pictures [piece, pieces]
 
 -- | Draw a single piece onto the board
 drawPieceBMP :: Int      -- ^ The size of the board
              -> Float    -- ^ x position to draw piece
              -> Float    -- ^ y position to draw piece
              -> Col      -- ^ colour of piece that is to be drawn
-             -> Picture
-drawPieceBMP sz x y Black = translate x y $ scale (scaleFactor sz) (scaleFactor sz) blackPiece
-drawPieceBMP sz x y White = translate x y $ scale (scaleFactor sz) (scaleFactor sz) whitePiece
+             -> IO Picture
+drawPieceBMP sz x y Black = do
+  black <- blackPiece
+  return $ translate x y $ scale (scaleFactor sz) (scaleFactor sz) black
+drawPieceBMP sz x y White = do
+  white <- whitePiece
+  return $ translate x y $ scale (scaleFactor sz) (scaleFactor sz) white
