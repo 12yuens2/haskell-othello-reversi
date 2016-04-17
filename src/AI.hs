@@ -114,7 +114,8 @@ getMin list = minimum list
 
 updateWorldNetwork _ w@(World b c sts bt wt btime wtime p v r go sd sk) 
     | (not r && gameOver b) || btime <= 0 || wtime <= 0 = return w {gameIsOver = True}
-    | p || (r && sk == Nothing)          = return w
+    | p || (r && sk == Nothing) || (sk /= Nothing && (sd && c == Black || not sd && c == White))         
+            = return w
     | not (r || validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
                                            $ return w {board = b{passes = passes b + 1}, turn = other c}
     | r || (sk /= Nothing && (sd && c == White || not sd && c == Black)) = 
