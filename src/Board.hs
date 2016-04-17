@@ -346,7 +346,8 @@ flipPiece (((x,y),c):pieces) (newX, newY)
 checkFlips :: [Position]  -- ^ The list of positions that have pieces to be flipped
            -> Board       -- ^ The 'Board' to check if positions contain pieces and the colours of pieces
            -> Position    -- ^ The 'Position' where the move has been made
-           -> Position    -- ^ The position offset used to check in a specific direction (eg, (0,-1) for North, (1,-1) for NorthEast)
+           -> Position    -- ^ The position offset used to check in a specific 
+                          --   direction (eg, (0,-1) for North, (1,-1) for NorthEast)
            -> Col         -- ^ The 'Col' which we are flipping the pieces to
            -> [Position]  -- ^ The return type. The fuction either returns its first argument or an empty list
 checkFlips returnList b (x,y) (xOffset, yOffset) c = 
@@ -432,13 +433,11 @@ undoTurn :: World  -- ^ The world to be reverted to the previuos turn
          -> World  -- ^ returns the world in its previos turn
 undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
          trace ("Cannot undo further back than current state") w
-undoTurn w@(World _ _ ((x,y,i,j):xs) Human Human _ _ _ _ _ _ _ _)  = 
-         trace "Reverted to previous player turn" 
-         w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
-undoTurn w@(World _ Black ((x,y,i,j):xs) Human _ _ _ _ _ _ _ _ _) = 
-         trace "Reverted to previous player turn" 
-               w {board = x, turn = Black, stateList = xs, bTimer = i, wTimer = j}
-undoTurn w@(World _ White ((x,y,i,j):xs) _ Human _ _ _ _ _ _ _ _) = 
-         trace "Reverted to previous player turn" 
-               w {board = x, turn = White, stateList = xs, bTimer = i, wTimer = j}
-undoTurn w = trace "Cannot revert during AI turn" w
+undoTurn w@(World _ _ ((x,y,i,j):xs) bt wt _ _ _ _ _ _ _ _)  = 
+         | bt == Human && wt == Human = trace "Reverted to previous player turn"
+           w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
+         | bt == Human                = trace "Reverted to previous player turn"
+           w {board = x, turn = Black, stateList = xs, bTimer = i, wTimer = j}
+         | wt == Human                = trace "Reverted to previous player turn"
+           w {board = x, turn = White, stateList = xs, bTimer = i, wTimer = j}
+         | otherwise = trace "Cannot revert during AI turn" w
