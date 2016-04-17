@@ -22,10 +22,6 @@ data GameTree = GameTree { game_board :: Board,
                            next_moves :: [(Position, GameTree)] }
 
 
-genAllMoves :: Board -> Col -> [Position]
-genAllMoves b c = [(x,y) | x <- [0..(size b - 1)], y <- [0..(size b - 1)]]
-
-
 generateMoves :: Board -> Col -> [Position]
 generateMoves b c = checkAvailable b (0,0) c
 
@@ -68,13 +64,13 @@ yusukiMove :: Int -- ^ Maximum search depth
             -> Position
 yusukiMove (-1) tree = fst (head (next_moves tree))
 yusukiMove 0 (GameTree b c []) = undefined
-yusukiMove depth (GameTree b c next_moves) = trace ("makeing best move possible") $ 
+yusukiMove depth (GameTree b c next_moves) = 
     bestPos depth c next_moves 
     where
       --snd $ maximum [(value, pos) | value <- evaluate ((makeMove b ) c), pos <- next_poss]
 
       bestPos :: Int -> Col -> [(Position, GameTree)] -> Position
-      bestPos depth c next_moves = trace ("--" ++ show(childrenList (depth-1) next_moves c)) snd $ maximum $ childrenList (depth-1) next_moves c
+      bestPos depth c next_moves = snd $ maximum $ childrenList (depth-1) next_moves c
 
 
 childrenList :: Int -> [(Position, GameTree)] -> Col -> [(Int, Position)]
