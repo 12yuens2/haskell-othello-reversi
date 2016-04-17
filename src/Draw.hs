@@ -3,6 +3,7 @@ module Draw where
 import Graphics.Gloss
 import Board
 import Data.Tuple
+import System.IO.Unsafe (unsafePerformIO)
 
 import Debug.Trace
 
@@ -45,28 +46,32 @@ defaultSquareWidth = 8
 scaleFactor :: Int -> Float
 scaleFactor sz = defaultSquareWidth / fromIntegral(sz)
 
+
 -- | General fucntion to load a bitmap to an IO Picture
-bmp :: FilePath -> IO Picture
-bmp file = loadBMP file
+bmp :: FilePath -> Picture
+bmp file = unsafePerformIO $ loadBMP file 
+  --bitmap <- loadBMP file
+  --let picture = bitmap
+  --picture
 
 -- | Loads bmp picture of black piece
-blackPiece :: IO Picture
+blackPiece :: Picture
 blackPiece = bmp "res/black2.bmp"
 
 -- | Loads bmp picture of white piece
-whitePiece :: IO Picture 
+whitePiece :: Picture 
 whitePiece = bmp "res/white2.bmp"
 
 -- | Loads bmp picture of blank space
-blankPiece :: IO Picture
+blankPiece :: Picture
 blankPiece = bmp "res/blank.bmp"
 
 -- | Loads bmp picture of hint piece
-hintPiece :: IO Picture
+hintPiece :: Picture
 hintPiece = bmp "res/hint2.bmp"
 
 -- | Loads bmp picture of gameover
-gameOverScreen :: IO Picture
+gameOverScreen :: Picture
 gameOverScreen = bmp "res/gameover.bmp"
 
 -- ^ Draws the world and information based on its state
@@ -107,15 +112,13 @@ gameOverScreen = bmp "res/gameover.bmp"
 drawWorldIO :: World -> IO Picture
 -- Draw gameover
 drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True _ _) = do
-  gameover  <- gameOverScreen
   text      <- drawText (getWinner (Board sz ps pc) btime wtime) 0 0
-  return $ pictures [gameover, text]
+  return $ pictures [gameOverScreen, text]
 
 -- Draw pause
 drawWorldIO (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ _ _) = do
-  pause <- gameOverScreen
   text  <- drawText ("PAUSED") 0 0
-  return $ pictures [pause, text]
+  return $ pictures [gameOverScreen, text]
 
 -- Draws hints for reversi start
 drawWorldIO w@(World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ _ _) = do
@@ -148,8 +151,8 @@ drawWorldIO (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ _ _) = do
 drawBoardBMP :: Int      -- ^ The size of the board
              -> IO Picture
 drawBoardBMP sz = do
-  emptyPiece <- mapM (drawEmptyPiece sz) [(x,y) | x <- [0..(sz-1)], y <- [0..(sz-1)]]
-  return $ pictures emptyPiece
+  emptyPieces <- mapM (drawEmptyPiece sz) [(x,y) | x <- [0..(sz-1)], y <- [0..(sz-1)]]
+  return $ pictures emptyPieces
 
 
 -- | Gets a string stating the outcome of a game based on a board
@@ -179,9 +182,8 @@ drawHints :: Int         -- ^ The size of the board on which hints are being dra
           -> IO Picture
 drawHints _ [] = return Blank
 drawHints sz ((x,y):ps) = do
-  hint <- hintPiece
   hints <- drawHints sz ps
-  return $ pictures [ (translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) hint)
+  return $ pictures [ (translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) hintPiece)
                     , hints
                     ]
 
@@ -189,9 +191,8 @@ drawHints sz ((x,y):ps) = do
 drawEmptyPiece :: Int       -- ^ The size of the board
                -> Position  -- ^ The position draw the empty space on the board
                -> IO Picture
-drawEmptyPiece sz (x,y) = do
-  blank <- blankPiece
-  return $ translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) blank
+drawEmptyPiece sz (x,y) = 
+  return $ translate (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) $ scale (scaleFactor sz) (scaleFactor sz) blankPiece
 
 
 -- | Draws pc onto the boards
@@ -200,8 +201,8 @@ drawPiecesBMP :: Int                -- ^ The size of the board
               -> IO Picture
 drawPiecesBMP _ [] = return Blank
 drawPiecesBMP sz (((x,y),col):ps) = do
-  piece <- drawPieceBMP sz (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) col
-  pieces <- drawPiecesBMP sz ps
+  piece   <- drawPieceBMP sz (squarePosX sz $ fromIntegral(x)) (squarePosY sz $ fromIntegral(y)) col
+  pieces  <- drawPiecesBMP sz ps
   return $ pictures [piece, pieces]
 
 -- | Draw a single piece onto the board
@@ -210,9 +211,7 @@ drawPieceBMP :: Int      -- ^ The size of the board
              -> Float    -- ^ y position to draw piece
              -> Col      -- ^ colour of piece that is to be drawn
              -> IO Picture
-drawPieceBMP sz x y Black = do
-  black <- blackPiece
-  return $ translate x y $ scale (scaleFactor sz) (scaleFactor sz) black
-drawPieceBMP sz x y White = do
-  white <- whitePiece
-  return $ translate x y $ scale (scaleFactor sz) (scaleFactor sz) white
+drawPieceBMP sz x y Black = 
+  return $ translate x y $ scale (scaleFactor sz) (scaleFactor sz) blackPiece
+drawPieceBMP sz x y White =
+  return $ translate x y $ scale (scaleFactor sz) (scaleFactor sz) whitePiece
