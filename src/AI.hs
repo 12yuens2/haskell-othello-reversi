@@ -94,12 +94,15 @@ makeList :: Int                      -- ^ depth
 makeList _ [] _ _= []
 makeList depth ((_,tree):xs) target current = (evaluateChildren (depth-1) tree target (other current)):(makeList depth xs target current)
 
+-- Possibly need to change cases for no possible moves as no moves on either side good be either good or bad
+-- having no moves is bad
 getMax :: [Int] -> Int
-getMax [] = -100000   -- need to change
+getMax [] = -10000 
 getMax list = maximum list
 
+-- opponent having no moves is good
 getMin :: [Int] -> Int
-getMin [] = -100000  -- need to change
+getMin [] = 10000
 getMin list = minimum list
 
 {-
@@ -143,21 +146,36 @@ updateWorldNetwork _ w@(World b c sts bt wt btime wtime p v r go sd sk)
                                                fromServer <- recv s 65536
                                                return $ decode fromServer
 -}
+
+-- can probably restructure function to be nicer
+updateWorldNetwork _ w@(World _ c _ _ _ _ _ _ _ True _ sd sk) 
+            = case sk of
+                Nothing -> return w
+                Just s  | sd && c == White ||
+                          not sd && c == Black -> withSocketsDo $
+                                                    -- must check for end of reversi start
+                                                    do inputByteString <- recv s 65536
+                                                       let b = decode (inputByteString)
+                                                       return $ w {board = b, 
+                                                                   turn = (other c), 
+                                                                   chooseStart = (startState (pieces b))
+                                                                  }
+                        | otherwise -> return w
 updateWorldNetwork _ w@(World b c sts bt wt btime wtime p v r go sd sk) 
             | gameOver b || btime <= 0 || wtime <= 0 = return (World b c sts bt wt btime wtime p v r True sd sk)
             | p                                      = return $ World b c sts bt wt btime wtime p v r go sd sk
             | not (validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") return (World (b {passes = (passes b) + 1}) (other c) sts bt wt btime wtime p v False go sd sk)
-            | c == Black && bt == Human     = return (World b {passes = 0} c sts bt wt (btime-10) wtime p v False go sd sk)
-            | c == White && wt == Human     = return (World b {passes = 0} c sts bt wt btime (wtime-10) p v False go sd sk)
+            | c == Black && bt == Human     = return (World b c sts bt wt (btime-10) wtime p v False go sd sk)
+            | c == White && wt == Human     = return (World b c sts bt wt btime (wtime-10) p v False go sd sk)
             | c == White && wt == AI ||
               c == Black && bt == AI = let
                           tree = buildTree generateMoves b c
                           nextMove = yusukiMove 5 tree in
                                      case makeMove b nextMove c of
                                           Nothing -> error("not possible moves not implemented")
-                                          Just b' -> return $ (World (b' {passes = 0}) (other c) sts bt wt btime wtime p v False go sd sk)
+                                          Just b' -> return $ (World b' (other c) sts bt wt btime wtime p v False go sd sk)
             -- Find better way of getting just here
-            -- WHOLE SECTION HERE NEEDS IMPROVED
+            -- WHOLE SECTION HERE NEEDS IMPROVED possibly pattern match again
             | otherwise = case sk of
                 Nothing -> return w
                 Just s  | sd && c == White ||

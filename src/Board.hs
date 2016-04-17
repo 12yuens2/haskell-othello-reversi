@@ -178,9 +178,10 @@ setArgs ("-server":xs) w = do addrInfos <- getAddrInfo
                               (conn, address) <- accept s
                               setArgs xs (w {sock = Just conn, bType = Server, wType = Client})
 
-setArgs ("-client":xs) w = do addrInfos <- getAddrInfo
+setArgs ("-client":xs) w = do let a = getAddrArg xs
+                              addrInfos <- getAddrInfo
                                            (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
-                                           Nothing (Just "21821")
+                                           (Just a) (Just "21821")
                               let serverAddr = head addrInfos
                               s <- socket (addrFamily serverAddr) Stream defaultProtocol 
                               connect s (addrAddress serverAddr)
@@ -200,10 +201,22 @@ setArgs ("-s":xs) (World (Board _ ps pc) t sts bt wt btime wtime p v r go sd sk)
                     | otherwise = error "An integer is required after -s"
                         where readResult = (reads (head xs)) :: [(Int, String)]
 setArgs ("-r":xs)  w = setArgs xs (w {chooseStart = True})
-setArgs ("-ab":xs) w = setArgs xs (w {bType = AI})
-setArgs ("-aw":xs) w = setArgs xs (w {wType = AI})
-setArgs ("-v":xs)  w = setArgs xs (w {showValid = True})
+setArgs ("-ab":xs) w = if sock w == Nothing   -- make sure ai doesn't take priority over server types
+                          then setArgs xs (w {bType = AI})  
+                          else setArgs xs w
+setArgs ("-aw":xs) w = if sock w == Nothing
+                          then setArgs xs (w {wType = AI})
+                          else setArgs xs w
+setArgs ("-h":xs)  w = setArgs xs (w {showValid = True})
 setArgs (x:xs)     _ = error ("Unrecognised flag: " ++ x)
+
+
+-- | gets a server address from arguments
+getAddrArg :: [String] -> String
+getAddrArg [] = error "Error, host name argument required for client to connect to"
+getAddrArg xs = head xs  -- check if there is connection?
+
+
 
 -- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable
 validMovesAvailable :: Board  -- ^ The board to be checked
@@ -279,7 +292,7 @@ getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ s
 makeMove :: Board -> Position -> Col -> Maybe Board
 makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
                    | length posList == 0     = Nothing
-                   | otherwise               = Just (flipping (Board (size b) (passes b) (((x,y),c):(pieces b))) posList)
+                   | otherwise               = Just (flipping (Board (size b) 0 (((x,y),c):(pieces b))) posList)
                    where
                        posList = getPosList b (x,y) c
 
@@ -402,7 +415,7 @@ undoTurn :: World  -- ^ The world to be reverted to the previos turn
 undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
          trace ("Cannot undo further back than current state") w
 undoTurn w@(World _ _ ((x,y,i,j):xs) Human Human _ _ _ _ _ _ _ _)  = 
-         trace "Reverted to previous player turn" w {stateList = xs, bTimer = i, wTimer = j}
+         trace "Reverted to previous player turn" w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
 undoTurn (World b Black ((x,y,i,j):xs) Human wt btime wtime p v r go sd sk) = 
          trace "Reverted to previous player turn" 
                (World x Black xs Human wt i j p v r go sd sk)
