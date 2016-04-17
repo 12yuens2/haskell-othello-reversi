@@ -11,7 +11,7 @@ import Control.Monad
 import Debug.Trace
 
 defaultBoardSize = 8
-startTime = 20000
+startTime = 200000
 
 data Col = Black | White
   deriving (Show, Eq)
@@ -416,15 +416,51 @@ yusukiEvaluate :: Board  -- ^ The board to evaluate
                -> Col    -- ^ The colour to evaluate for
                -> Int    -- ^ A score depending on how good the boardstate is for chosen colour
 yusukiEvaluate Board {pieces = []}                _       = 0
-yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2  
+yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
+      -- Give higher values for corners
         | (x,y) == (0,0) 
        || (x,y) == (0,s-1) 
        || (x,y) == (s-1,0) 
        || (x,y) == (s-1,s-1) = if colour1 == colour2 
                                   then (yusukiEvaluate (Board s 0 xs) colour2) + 1000
                                   else (yusukiEvaluate (Board s 0 xs) colour2) - 1000
+
+       --Give lower values for positions next to corners
+        | (x,y) == (1,0)    || (x,y) == (1,1)   || (x,y) == (0,1)
+       || (x,y) == (0,s-2)  || (x,y) == (1,s-2) || (x,y) == (1,s-1)
+       || (x,y) == (s-2,0)  || (x,y) == (s-2,1) || (x,y) == (s-1,1)
+       || (x,y) == (s-1,s-2)  || (x,y) == (s-2,s-2) || (x,y) == (s-2,s-1) =
+          if colour1 == colour2
+            then (yusukiEvaluate (Board s 0 xs) colour2) - 400
+            else (yusukiEvaluate (Board s 0 xs) colour2) + 50
+
+        | x == 0
+       || x == s-1
+       || y == 0
+       || y == s-1 = 
+          if colour1 == colour2
+            then (yusukiEvaluate (Board s 0 xs) colour2) + 100
+            else (yusukiEvaluate (Board s 0 xs) colour2) - 100
+
+      --Otherwise
         | colour1 == colour2 = (yusukiEvaluate (Board s 0 xs) colour2) + 1
         | otherwise          = yusukiEvaluate (Board s 0 xs) colour2
+
+
+
+hirushoEvaluate :: Board -> Col -> Int
+hirushoEvaluate Board {pieces = []}                _       = 0
+hirushoEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
+      -- Giver higher values for corners
+        | (x,y) == (0,0) 
+       || (x,y) == (0,s-1) 
+       || (x,y) == (s-1,0) 
+       || (x,y) == (s-1,s-1) = if colour1 == colour2 
+                                  then (hirushoEvaluate (Board s 0 xs) colour2) + 1000
+                                  else (hirushoEvaluate (Board s 0 xs) colour2) - 1000
+
+        | colour1 == colour2 = (hirushoEvaluate (Board s 0 xs) colour2) + length(checkAvailable (Board s 0 (((x,y), colour1):xs)) (0,0) colour2)
+        | otherwise          = hirushoEvaluate (Board s 0 xs) colour2
 
 
 -- | Reverts world back to most recent move - only human player turns are 
@@ -433,7 +469,7 @@ undoTurn :: World  -- ^ The world to be reverted to the previuos turn
          -> World  -- ^ returns the world in its previos turn
 undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
          trace ("Cannot undo further back than current state") w
-undoTurn w@(World _ _ ((x,y,i,j):xs) bt wt _ _ _ _ _ _ _ _)  = 
+undoTurn w@(World _ _ ((x,y,i,j):xs) bt wt _ _ _ _ _ _ _ _) 
          | bt == Human && wt == Human = trace "Reverted to previous player turn"
            w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
          | bt == Human                = trace "Reverted to previous player turn"
