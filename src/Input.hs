@@ -13,12 +13,13 @@ import Data.Binary
 import Board
 import AI
 import Draw
-import System.IO.Unsafe (unsafePerformIO)
 
 import Debug.Trace
 
 
-getMover :: Bool -> (Board -> Position -> Col -> Maybe Board)
+-- | Selects movement function to use based on whether placing start pieces or not
+getMover :: Bool  -- ^ Boolean representing whether starting pieces are being placed
+         -> (Board -> Position -> Col -> Maybe Board)  -- ^ movement function
 getMover True = startMove
 getMover False = makeMove
 
@@ -61,8 +62,8 @@ handleInputIO (EventKey (Char k) Up _ _) w@(World _ _ _ _ _ _ _ p v _ go _ sk)
         | k == 'h' && (not p) && (not go)                  = return w { showValid = not v }
         | k == 'u' && (not p) && (not go) && sk == Nothing = return $ undoTurn w
         | k == 'p'            && (not go) && sk == Nothing = return w { pause = not p }
-        | k == 'r' && (not p) && sk == Nothing = let args  = unsafePerformIO $ getArgs in
-                                                             initWorld args
+        | k == 'r' && (not p) && sk == Nothing             = do args <- getArgs
+                                                                initWorld args
         | k == 's' && (not p) && (not go) && sk == Nothing = do writeFile "save.othello" (encode w)
                                                                 return w
         | k == 'l' && (not p) && (not go) && sk == Nothing = do fromFile <- readFile "save.othello"
