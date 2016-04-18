@@ -7,7 +7,8 @@ import Data.Tuple
 
 import Debug.Trace
 
-
+ -- | Bitmaps are the data structure that stores all the bitmap files at
+ -- the start of the game so they can be accessed by other draw functions
 data Bitmaps = Bitmaps {
   bp    :: Picture,
   wp    :: Picture,

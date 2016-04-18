@@ -3,15 +3,16 @@ module Datatype where
 import Data.Binary
 import Network.Socket
 
+type Position = (Int, Int)
+
+
+-- | A Col is either Black or White and represents the two opposing players
 data Col = Black | White
   deriving (Show, Eq)
 
-type Position = (Int, Int)
-
--- A Board is a record containing the board size (a board is a square grid, n *
+-- | A Board is a record containing the board size (a board is a square grid, n *
 -- n), the number of consecutive passes, and a list of pairs of position and
 -- the colour at that position.
-
 data Board = Board { size :: Int,
                      passes :: Int,
                      pieces :: [(Position, Col)]
@@ -51,7 +52,8 @@ data World = World { board :: Board,
                      }
   deriving Show
 
-
+-- Binary encoding and decoding for World
+-- Note the socket is not encoded and is set to Nothing should it be decoded
 instance Binary World where
   put (World b t sts bt wt btime wtime p v r go sd sk) = do 
                                         put b

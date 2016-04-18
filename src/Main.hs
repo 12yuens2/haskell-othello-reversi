@@ -8,10 +8,6 @@ import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString.Lazy
 import Data.Binary
 
--- import Network.Socket hiding (sendAll, recv)
--- import Network.Socket.ByteString.Lazy
--- import Data.Binary
-
 import Board
 import Draw
 import Input
@@ -33,9 +29,15 @@ import AI
 
 main :: IO ()
 main = do 
+        -- Get the loaded images and pass it as an argument to drawWorldIO
 	imgs 	<- initPictures
+
+        -- Get the command line arguments and pass it to initworld
         args 	<- getArgs
-        w 		<- initWorld args
+
+        -- Create the initial world and pass it into playIO
+
+        w       <- initWorld args
         playIO  (InWindow "Othello" (1200,800) (10, 10))
                 black
                 10

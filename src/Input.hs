@@ -34,24 +34,29 @@ handleInputIO :: Event     -- ^ Event to react to
 -- For placing starting pieces
 handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y)) 
               w@(World b t sts _ _ btime wtime p _ r go _ sk)
+
+    -- if the position clicked is outside the board, don't do anything
     | x' < 0 || x' >= size b || y' < 0 || y' >= size b || p || go = return w
-    | otherwise
-    = do let moveFunc = getMover r
+    | otherwise = trace ("Left button pressed at: " ++ show (x', y')) $ 
+    
+      -- Get a movement function and apply it
+      do let moveFunc = getMover r
          case moveFunc b (x', y') t of
-           Just b' -> case sk of
-                      Just s  -> trace ("Left button pressed at: " ++ show (x', y')) $
-                                 do sendAll s (encode b')
-                                    return w {board = b', 
-                                              turn = other t, 
-                                              stateList = (b,t,btime,wtime):sts,
-                                              chooseStart = length (pieces b') < 4
-                                             }
-                      Nothing -> trace ("Left button pressed at: " ++ show (x', y')) $
-                                 return w {board = b', 
-                                           turn = other t, 
-                                           stateList = (b,t,btime,wtime):sts, 
-                                           chooseStart = length (pieces b') < 4
-                                          }
+
+           -- return w' with the move made
+           Just b' -> let w' = w { board = b', 
+                                   turn = other t, 
+                                   stateList = (b,t,btime,wtime):sts, 
+                                   chooseStart = length (pieces b') < 4 } in
+                        case sk of
+                          -- Send the board across the socket if it exists
+                          Just s  -> do sendAll s (encode b')
+                                        return w'
+
+                          -- Otherwise play the game normally
+                          Nothing -> return w'
+
+           -- makeMove function returned Nothing so it was an invalid move
            Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return w
     where x' = snapX (size b) x
           y' = snapY (size b) y
@@ -60,15 +65,28 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y))
 -- Handle key inputs
 handleInputIO (EventKey (Char k) Down _ _) w = trace ("Key " ++ show k ++ " down") return w
 handleInputIO (EventKey (Char k) Up _ _) w@(World _ _ _ _ _ _ _ p v _ go _ sk) 
+        -- Show hints if the game is not paused and not over
         | k == 'h' && not p && not go                   = return w { showValid = not v }
+
+        -- Undo moves if the game is not paused, not over and not networked
         | k == 'u' && not p && not go && isNothing sk   = return $ undoTurn w
-        | k == 'p'            && not go && isNothing sk = return w { isPaused = not p }
-        | k == 'r' && not p && isNothing sk             = do args <- getArgs
+
+        -- Pause the game
+        | k == 'p'          && not go && isNothing sk   = return w { isPaused = not p }
+
+        -- Restart the game
+        | k == 'r' && not p           && isNothing sk   = do args <- getArgs
                                                              initWorld args
+
+        -- Save the game to "save.othello"
         | k == 's' && not p && not go && isNothing sk   = do writeFile "save.othello" (encode w)
                                                              return w
+
+        -- Load the game from "save.othello"
         | k == 'l' && not p && not go && isNothing sk   = do fromFile <- readFile "save.othello"
                                                              return $ decode fromFile
+
+        -- Unrecognised keys
         | otherwise                                     = return w
 handleInputIO e w = return w
 

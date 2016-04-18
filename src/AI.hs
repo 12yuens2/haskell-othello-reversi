@@ -4,6 +4,7 @@ import System.Exit
 import Network.Socket hiding (sendAll, recv)
 import Network.Socket.ByteString.Lazy
 import Data.Binary
+import Control.Monad
 
 import Board
 import Datatype
@@ -19,7 +20,7 @@ data GameTree = GameTree { game_board :: Board,
                            next_moves :: [(Position, GameTree)] }
 
 
--- | generates all possible moves that can be made for a colour on a board
+-- | Generates all possible moves that can be made for a colour on a board
 generateMoves :: Board       -- ^ The board to check
               -> Col         -- ^ The colour to check valid moves for
               -> [Position]  -- ^ Returns a list of valid moves
@@ -58,6 +59,7 @@ buildTree gen b c = let moves = gen b c in -- generated moves
 -- is at the top of the game tree.
 
 -- | Have Yusuki (the greatest Othello player in the world) make a move.
+-- uses 'yusukiEvaluate' (Yusuki's great mind) to evaluate board states
 yusukiMove :: Int       -- ^ Maximum search depth
            -> GameTree  -- ^ Initial game tree
            -> Position  -- ^ Returns position of the best move
@@ -106,14 +108,15 @@ yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
                                   else yusukiEvaluate (Board s 0 xs) colour2 - 1000
 
        --Give lower values for positions next to corners
-        | (x,y) == (1,0)    || (x,y) == (1,1)   || (x,y) == (0,1)
-       || (x,y) == (0,s-2)  || (x,y) == (1,s-2) || (x,y) == (1,s-1)
-       || (x,y) == (s-2,0)  || (x,y) == (s-2,1) || (x,y) == (s-1,1)
+        | (x,y) == (1,0)      || (x,y) == (1,1)     || (x,y) == (0,1)
+       || (x,y) == (0,s-2)    || (x,y) == (1,s-2)   || (x,y) == (1,s-1)
+       || (x,y) == (s-2,0)    || (x,y) == (s-2,1)   || (x,y) == (s-1,1)
        || (x,y) == (s-1,s-2)  || (x,y) == (s-2,s-2) || (x,y) == (s-2,s-1) =
           if colour1 == colour2
             then yusukiEvaluate (Board s 0 xs) colour2 - 400
             else yusukiEvaluate (Board s 0 xs) colour2 + 50
 
+      -- Give good values for sides
         | x == 0
        || x == s-1
        || y == 0
@@ -173,10 +176,17 @@ updateWorldIO :: Float     -- ^ Time passed so far
               -> World     -- ^ The world to check state of
               -> IO World  -- ^ Returns updated world
 updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk) 
+    -- Check the game is over and set the gameIsOver in 'World' 
     | (not r && gameOver b) || btime <= 0 || wtime <= 0 = return w {gameIsOver = True}
+
+    -- Skip a player's turn and increment passes if there are no valid moves for a player
     | not (r || validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
                                            $ return w {board = b{passes = passes b + 1}, turn = other c}
+    
+    -- 
     | p || (r && isNothing sk) || (isJust sk && (sd && c == Black || not sd && c == White)) = return w
+
+    -- | If networked, wait to get the new board from the socket
     | isJust sk = 
         do let s = fromJust sk
            inputByteString <- recv s 65536
@@ -185,12 +195,18 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
                        turn = other c, 
                        chooseStart = length (pieces b') < 4
                       }
+
+    -- While still on the same turn, decrement the timer
     | c == Black && bt == Human = return w {bTimer = btime - 10}
     | c == White && wt == Human = return w {wTimer = wtime - 10}
+
+    -- Have the random AI make a move
     | c == Black && bt == Random 
    || c == White && wt == Random = do move <- chooseRandom (checkNormal c b)
                                       let b' = fromJust (makeMove b move c)
                                       return w {board = b', turn = other c}
+    
+    -- Have Yusuki make a move
     | otherwise = let
         tree = buildTree generateMoves b c
         nextMove = yusukiMove 5 tree in case makeMove b nextMove c of
@@ -199,4 +215,4 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
 
 
 chooseRandom :: [a] -> IO a
-chooseRandom xs = randomRIO (0, length xs - 1) >>= return . (xs !!)
+chooseRandom xs = liftM (xs !!) (randomRIO (0, length xs - 1))
