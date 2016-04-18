@@ -219,7 +219,10 @@ getAddrArg xs = head xs
 validMovesAvailable :: Board  -- ^ The board to be checked
                     -> Col    -- ^ The colour to be checked for valid moves
                     -> Bool   -- ^ Returns False if there are no valid moves and True otherwise
-validMovesAvailable b c = (length (checkAvailable b (0,0) c)) /= 0
+validMovesAvailable b c = (length (checkNormal c b)) /= 0
+
+checkNormal :: Col -> Board -> [Position]
+checkNormal c b = checkAvailable b (0,0) c
 
 -- | Loops through board checking if there are any valid moves
 checkAvailable :: Board      -- ^ The board to be checked
