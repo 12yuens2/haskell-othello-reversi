@@ -87,6 +87,60 @@ evaluateChildren 0     GameTree {game_board = b}  target _       = yusukiEvaluat
 evaluateChildren depth GameTree {next_moves = ms} target current | target == current = getMin $ makeList depth ms target current
                                                                  | otherwise         = getMax $ makeList depth ms target current
 
+
+-- | evaluation function used by AI which scores specific positions higher
+-- depending on how valuable it is to capture that position
+yusukiEvaluate :: Board  -- ^ The board to evaluate
+               -> Col    -- ^ The colour to evaluate for
+               -> Int    -- ^ A score depending on how good the boardstate is for chosen colour
+yusukiEvaluate Board {pieces = []}                _       = 0
+yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
+      -- Give higher values for corners
+        | (x,y) == (0,0) 
+       || (x,y) == (0,s-1) 
+       || (x,y) == (s-1,0) 
+       || (x,y) == (s-1,s-1) = if colour1 == colour2 
+                                  then yusukiEvaluate (Board s 0 xs) colour2 + 1000
+                                  else yusukiEvaluate (Board s 0 xs) colour2 - 1000
+
+       --Give lower values for positions next to corners
+        | (x,y) == (1,0)    || (x,y) == (1,1)   || (x,y) == (0,1)
+       || (x,y) == (0,s-2)  || (x,y) == (1,s-2) || (x,y) == (1,s-1)
+       || (x,y) == (s-2,0)  || (x,y) == (s-2,1) || (x,y) == (s-1,1)
+       || (x,y) == (s-1,s-2)  || (x,y) == (s-2,s-2) || (x,y) == (s-2,s-1) =
+          if colour1 == colour2
+            then yusukiEvaluate (Board s 0 xs) colour2 - 400
+            else yusukiEvaluate (Board s 0 xs) colour2 + 50
+
+        | x == 0
+       || x == s-1
+       || y == 0
+       || y == s-1 = 
+          if colour1 == colour2
+            then yusukiEvaluate (Board s 0 xs) colour2 + 100
+            else yusukiEvaluate (Board s 0 xs) colour2 - 100
+
+      --Otherwise
+        | colour1 == colour2 = yusukiEvaluate (Board s 0 xs) colour2 + 1
+        | otherwise          = yusukiEvaluate (Board s 0 xs) colour2
+
+
+
+hirushoEvaluate :: Board -> Col -> Int
+hirushoEvaluate Board {pieces = []}                _       = 0
+hirushoEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
+      -- Giver higher values for corners
+        | (x,y) == (0,0) 
+       || (x,y) == (0,s-1) 
+       || (x,y) == (s-1,0) 
+       || (x,y) == (s-1,s-1) = if colour1 == colour2 
+                                  then hirushoEvaluate (Board s 0 xs) colour2 + 1000
+                                  else hirushoEvaluate (Board s 0 xs) colour2 - 1000
+
+        | colour1 == colour2 = hirushoEvaluate (Board s 0 xs) colour2 + length(checkAvailable (Board s 0 (((x,y), colour1):xs)) (0,0) colour2)
+        | otherwise          = hirushoEvaluate (Board s 0 xs) colour2
+
+
 -- | creates a list of scores for each GameTree in a list of next moves
 makeList :: Int                      -- ^ Current depth in tree
          -> [(Position, GameTree)]   -- ^ list of positions and gametrees they create

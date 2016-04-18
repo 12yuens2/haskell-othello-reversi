@@ -105,6 +105,11 @@ drawWorldIO bitmaps (World (Board sz ps pc) _ _ bt wt btime wtime _ _ _ _ _ _) =
                     , numBlack, numWhite
                     ,timeBlack, timeWhite]
 
+
+timeLeft :: PlayerType -> Int -> (Int, Int) -> IO Picture
+timeLeft Human time (x,y) = drawText ("Time: " ++ show (div time 100)) x y
+timeLeft _     _    _     = return Blank
+
 blackTime :: PlayerType -> Int -> IO Picture
 blackTime Human btime = drawText ("Time: " ++ show (div btime 100)) 1700 (-500)
 blackTime _     _     = return Blank
