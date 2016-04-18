@@ -74,76 +74,47 @@ hintPiece = bmp "res/hint2.bmp"
 gameOverScreen :: Picture
 gameOverScreen = bmp "res/gameover.bmp"
 
--- ^ Draws the world and information based on its state
---drawWorldBMP :: World    -- ^ The world which is to be drawn 
---             -> Picture
-
-----Draw gameover
---drawWorldBMP (World (Board sz ps pieces) turn _ _ _ _ _ True ) = pictures [ gameOverScreen, (drawText (getWinner (Board sz ps pieces)) 0 0)]
-
----- Draws hints for reversi start
---drawWorldBMP (World (Board sz ps pieces) turn _ _ _ True True _ ) = 
---       pictures [ (drawBoardBMP sz)
---                , (drawHints sz (checkStart (Board sz ps pieces)))
---                , (drawPiecesBMP sz pieces)
---                , drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
---                , drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
---                ]
-
-----Draw hints
---drawWorldBMP (World (Board sz ps pieces) turn _ _ _ True _ _) = 
---       pictures [ (drawBoardBMP sz)
---                , (drawHints sz (checkAvailable (Board sz ps pieces) (0,0) turn))
---                , (drawPiecesBMP sz pieces)
---                , drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
---                , drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
---                ]
-
-
----- Draw otherwise
---drawWorldBMP (World (Board sz ps pieces) _ _ _ _ _ _ _ ) = 
---    pictures     [ (drawBoardBMP sz)
---                , (drawPiecesBMP sz pieces)
---                , drawText ("Black: " ++ (show $ evaluate (Board sz ps pieces) Black)) (-2300) (-500)
---                , drawText ("White: " ++ (show $ evaluate (Board sz ps pieces) White)) (-2300) 0
---                ]
+hintFunc :: Bool -> Col -> (Board -> [Position])
+hintFunc True _ = checkStart
+hintFunc _    c = (checkNormal c)
 
 --IO version of draw world
 drawWorldIO :: World -> IO Picture
 -- Draw gameover
-drawWorldIO (World (Board sz ps pc) turn _ _ _ btime wtime _ _ _ True _ _) = do
-  text      <- drawText (getWinner (Board sz ps pc) btime wtime) 0 0
+drawWorldIO (World b _ _ _ _ btime wtime _ _ _ True _ _) = do
+  text      <- drawText (getWinner b btime wtime) 0 0
   return $ pictures [gameOverScreen, text]
 
 -- Draw pause
-drawWorldIO (World (Board sz ps pc) turn _ _ _ _ _ True _ _ _ _ _) = do
+drawWorldIO (World _ _ _ _ _ _ _ True _ _ _ _ _) = do
   text  <- drawText ("PAUSED") 0 0
   return $ pictures [gameOverScreen, text]
 
 -- Draws hints for reversi start
-drawWorldIO w@(World (Board sz ps pc) turn _ _ _ btime wtime _ True True _ _ _) = do
-  hints <- drawHints sz (checkStart (Board sz ps pc))
-  world <- drawWorldIO w{ showValid = False, chooseStart = False}
+drawWorldIO w@(World b turn _ _ _ _ _ _ True r _ _ _) = do
+  hints <- drawHints (size b) ((hintFunc r turn) b)
+  world <- drawWorldIO w{ showValid = False}
   return $ pictures [world, hints]
-
--- Draw hints
-drawWorldIO w@(World (Board sz ps pc) turn _ _ _ btime wtime _ True _ _ _ _) = do
-  hints <- drawHints sz (checkAvailable (Board sz ps pc) (0,0) turn)
-  world <- drawWorldIO w{ showValid = False }
-  return $ pictures [world, hints]
-
 
 -- Draw otherwise
-drawWorldIO (World (Board sz ps pc) _ _ _ _ btime wtime _ _ _ _ _ _) = do
+drawWorldIO (World (Board sz ps pc) _ _ bt wt btime wtime _ _ _ _ _ _) = do
   board     <- drawBoardBMP sz
   pieces    <- drawPiecesBMP sz pc
   numBlack  <- drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) 1700 1000
   numWhite  <- drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 1000
-  timeBlack <- drawText ("Time: " ++ (show (div btime 100))) 1700 (-500)
-  timeWhite <- drawText ("Time: " ++ (show (div wtime 100))) (-2300) (-500)
+  timeBlack <- blackTime bt btime
+  timeWhite <- whiteTime wt wtime
   return $ pictures [ board, pieces
                     , numBlack, numWhite
                     ,timeBlack, timeWhite]
+
+blackTime :: PlayerType -> Int -> IO Picture
+blackTime Human btime = drawText ("Time: " ++ (show (div btime 100))) 1700 (-500)
+blackTime _     _     = return Blank
+
+whiteTime :: PlayerType -> Int -> IO Picture
+whiteTime Human wtime = drawText ("Time: " ++ (show (div wtime 100))) (-2300) (-500)
+whiteTime _     _     = return Blank
 
 {- Draw for individual components -}
 
