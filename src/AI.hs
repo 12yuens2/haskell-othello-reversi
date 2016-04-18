@@ -24,7 +24,7 @@ data GameTree = GameTree { game_board :: Board,
 generateMoves :: Board       -- ^ The board to check
               -> Col         -- ^ The colour to check valid moves for
               -> [Position]  -- ^ Returns a list of valid moves
-generateMoves b c = checkAvailable b (0,0) c
+generateMoves b c = checkAvailable c b
 
 -- | Given a function to generate plausible moves (i.e. board positions)
 -- for a player (Col) on a particular board, generate a (potentially)
@@ -142,7 +142,7 @@ hirushoEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
                                   then hirushoEvaluate (Board s 0 xs) colour2 + 1000
                                   else hirushoEvaluate (Board s 0 xs) colour2 - 1000
 
-        | colour1 == colour2 = hirushoEvaluate (Board s 0 xs) colour2 + length(checkNormal colour2 (Board s 0 (((x,y), colour1):xs)))
+        | colour1 == colour2 = hirushoEvaluate (Board s 0 xs) colour2 + length(checkAvailable colour2 (Board s 0 (((x,y), colour1):xs)))
         | otherwise          = hirushoEvaluate (Board s 0 xs) colour2
 
 
@@ -180,7 +180,7 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
     | (not r && gameOver b) || btime <= 0 || wtime <= 0 = return w {gameIsOver = True}
 
     -- Skip a player's turn and increment passes if there are no valid moves for a player
-    | not (r || validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
+    | not (r || length (checkAvailable c b) /= 0) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
                                            $ return w {board = b{passes = passes b + 1}, turn = other c}
     
     -- 
@@ -202,7 +202,7 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
 
     -- Have the random AI make a move
     | c == Black && bt == Random 
-   || c == White && wt == Random = do move <- chooseRandom (checkNormal c b)
+   || c == White && wt == Random = do move <- chooseRandom (checkAvailable c b)
                                       let b' = fromJust (makeMove b move c)
                                       return w {board = b', turn = other c}
     

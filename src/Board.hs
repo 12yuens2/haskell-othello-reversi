@@ -113,30 +113,11 @@ setArgs (x:xs)     w | isJust (sock w)
                      | otherwise  = error ("Unrecognised flag: " ++ x)
 
 
--- | Abstracts over checkAvailable, gets a list of all available moves on a board
-checkNormal :: Col         -- ^ Colour to check available moves for
-            -> Board       -- ^ Board to check
-            -> [Position]  -- ^ Returns list of available moves
-checkNormal c b = checkAvailable b (0,0) c
-
-
--- | Loops through board checking if there are any valid moves
-checkAvailable :: Board      -- ^ The board to be checked
-               -> Position   -- ^ The position to be checked
-               -> Col        -- ^ The colour for checking whether this position would be a valid move
-               -> [Position] -- ^ Returns a list of all valid positions
--- If a position is at the end of a row, checkAvailable for start of next row, 
--- if at end of last row finish checking, otherwise just checkAvailable for next in row
-checkAvailable b (x, y) c | x==(size b - 1) 
-                         && y==(size b - 1) 
-                         && isValidMove b (x,y) c = [(x,y)]
-                          | x==(size b - 1) 
-                         && y==(size b - 1)       = []
-                          | y==(size b - 1) 
-                         && isValidMove b (x,y) c = (x,y):checkAvailable b (x+1,0) c
-                          | y==(size b - 1)       = checkAvailable b (x+1, 0) c
-                          | isValidMove b (x,y) c = (x,y):checkAvailable b (x,y+1) c
-                          | otherwise             = checkAvailable b (x,y+1) c
+-- | Gets a list of valid moves
+checkAvailable :: Col         -- ^ Colour to check available moves for
+               -> Board       -- ^ Board to check
+               -> [Position]  -- ^ Returns list of available moves
+checkAvailable c b = filter (\x -> isValidMove b x c) [(x,y) | x <- [0..(size b - 1)], y <- [0..(size b - 1)]]
 
 
 -- | Gets a list of unfilled starting positions

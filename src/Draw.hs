@@ -82,7 +82,7 @@ squarePosY s y = gridPos - pieceSize s - (rectSize s * y)
 
 hintFunc :: Bool -> Col -> (Board -> [Position])
 hintFunc True _ = checkStart
-hintFunc _    c = checkNormal c
+hintFunc _    c = checkAvailable c
 
 
 {- Drawing -}

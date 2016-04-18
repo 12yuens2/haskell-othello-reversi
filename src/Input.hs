@@ -44,7 +44,8 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y))
          case moveFunc b (x', y') t of
 
            -- return w' with the move made
-           Just b' -> let w' = w { board = b', 
+           Just b' -> trace "Valid move" $
+                      let w' = w { board = b', 
                                    turn = other t, 
                                    stateList = (b,t,btime,wtime):sts, 
                                    chooseStart = length (pieces b') < 4 } in
@@ -57,7 +58,7 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y))
                           Nothing -> return w'
 
            -- makeMove function returned Nothing so it was an invalid move
-           Nothing -> trace ("Invalid move. Left button pressed at: " ++ show (x', y')) $ return w
+           Nothing -> trace "Invalid move" $ return w
     where x' = snapX (size b) x
           y' = snapY (size b) y
 
