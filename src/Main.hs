@@ -41,4 +41,4 @@ main = do
                 w
                 drawWorldIO
                 handleInputIO
-                updateWorldNetwork
+                updateWorldIO
