@@ -21,6 +21,9 @@ Command line arguments
 ----------------------
 Usage: othello [OPTION...]
 
+Note: for each option if it is applied more than once  with different settings 
+      such as having "-aw -rw" or "-s 4 -s 10" then the last one will be applied
+
 -server                 sets this game as the server, the game will only launch 
                         once a connection from a client has been made, the 
                         server can set different game options and will send
@@ -36,7 +39,7 @@ Usage: othello [OPTION...]
 
 -r                      starts the game in 'reversi' mode, where the first 2
                         pieces from both players can be placed anywhere
-
+    
 -ab                     sets the black player as the ai
 
 -aw                     sets the white player as the ai
