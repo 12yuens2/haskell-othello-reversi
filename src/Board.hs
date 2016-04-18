@@ -96,6 +96,12 @@ setArgs ("-ab":xs) w = if isNothing (sock w)   -- make sure ai doesn't take prio
 setArgs ("-aw":xs) w = if isNothing (sock w)
                           then setArgs xs (w {wType = AI})
                           else setArgs xs w
+setArgs ("-rb":xs) w = if isNothing (sock w)   -- make sure ai doesn't take priority over server types
+                          then setArgs xs (w {bType = Random})  
+                          else setArgs xs w
+setArgs ("-rw":xs) w = if isNothing (sock w)
+                          then setArgs xs (w {wType = Random})
+                          else setArgs xs w
 setArgs ("-h":xs)  w = setArgs xs (w {showValid = True})
 setArgs (x:xs)     _ = error ("Unrecognised flag: " ++ x)
 

@@ -12,6 +12,8 @@ import Debug.Trace
 
 import Data.Maybe
 
+import System.Random (randomRIO)
+
 data GameTree = GameTree { game_board :: Board,
                            game_turn :: Col,
                            next_moves :: [(Position, GameTree)] }
@@ -137,7 +139,7 @@ hirushoEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
                                   then hirushoEvaluate (Board s 0 xs) colour2 + 1000
                                   else hirushoEvaluate (Board s 0 xs) colour2 - 1000
 
-        | colour1 == colour2 = hirushoEvaluate (Board s 0 xs) colour2 + length(checkAvailable (Board s 0 (((x,y), colour1):xs)) (0,0) colour2)
+        | colour1 == colour2 = hirushoEvaluate (Board s 0 xs) colour2 + length(checkNormal colour2 (Board s 0 (((x,y), colour1):xs)))
         | otherwise          = hirushoEvaluate (Board s 0 xs) colour2
 
 
@@ -185,8 +187,16 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
                       }
     | c == Black && bt == Human = return w {bTimer = btime - 10}
     | c == White && wt == Human = return w {wTimer = wtime - 10}
+    | c == Black && bt == Random 
+   || c == White && wt == Random = do move <- chooseRandom (choice (checkNormal c b))
+                                      let b' = fromJust (makeMove b move c)
+                                      return w {board = b', turn = other c}
     | otherwise = let
         tree = buildTree generateMoves b c
         nextMove = yusukiMove 5 tree in case makeMove b nextMove c of
                                   Nothing -> error "not possible moves not implemented"
                                   Just b' -> return $ w {board = b', turn = other c}
+
+
+chooseRandom :: [a] -> IO a
+chooseRandom xs = randomRIO (0, length xs - 1) >>= return . (xs !!)

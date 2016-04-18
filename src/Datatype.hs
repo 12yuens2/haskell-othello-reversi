@@ -22,6 +22,7 @@ data Board = Board { size :: Int,
 -- can be added in future for different AI types)
 data PlayerType = Human 
                 | AI
+                | Random
                 | Client
                 | Server
   deriving (Show, Eq)
@@ -83,14 +84,16 @@ instance Binary World where
 instance Binary PlayerType where
   put Human  = put (0 :: Word8)
   put AI     = put (1 :: Word8)
-  put Server = put (2 :: Word8)
-  put Client = put (3 :: Word8)
+  put Random = put (2 :: Word8)
+  put Server = put (3 :: Word8)
+  put Client = put (4 :: Word8)
   get = do t <- get :: Get Word8
            case t of 
             0 -> return Human
             1 -> return AI 
-            2 -> return Server
-            3 -> return Client 
+            2 -> return Random
+            3 -> return Server
+            4 -> return Client 
 
 -- Binary encoding and decoding for colour
 instance Binary Col where
