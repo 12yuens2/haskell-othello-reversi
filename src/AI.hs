@@ -188,7 +188,7 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
     | c == Black && bt == Human = return w {bTimer = btime - 10}
     | c == White && wt == Human = return w {wTimer = wtime - 10}
     | c == Black && bt == Random 
-   || c == White && wt == Random = do move <- chooseRandom (choice (checkNormal c b))
+   || c == White && wt == Random = do move <- chooseRandom (checkNormal c b)
                                       let b' = fromJust (makeMove b move c)
                                       return w {board = b', turn = other c}
     | otherwise = let

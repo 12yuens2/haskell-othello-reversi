@@ -58,8 +58,7 @@ handleInputIO (EventKey (MouseButton LeftButton) Up m (x, y))
 
 
 -- Handle key inputs
-handleInputIO (EventKey (Char k) Down _ _) w
-    = trace ("Key " ++ show k ++ " down") return w
+handleInputIO (EventKey (Char k) Down _ _) w = trace ("Key " ++ show k ++ " down") return w
 handleInputIO (EventKey (Char k) Up _ _) w@(World _ _ _ _ _ _ _ p v _ go _ sk) 
         | k == 'h' && not p && not go                   = return w { showValid = not v }
         | k == 'u' && not p && not go && isNothing sk   = return $ undoTurn w

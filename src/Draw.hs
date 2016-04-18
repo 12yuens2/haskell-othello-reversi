@@ -21,23 +21,35 @@ data Bitmaps = Bitmaps {
   pause :: Picture
 }
 
+-- | Load images at the start of the game
 initPictures :: IO Bitmaps
 initPictures = do
-  bp  <- loadBMP "res/black2.bmp"
-  wp  <- loadBMP "res/white2.bmp"
-  hp  <- loadBMP "res/hint2.bmp"
-  tp  <- loadBMP "res/blank.bmp" 
-  gob <- loadBMP "res/goblack.bmp"
-  gow <- loadBMP "res/gowhite.bmp"
-  gobt <- loadBMP "res/gobt.bmp"
-  gowt <- loadBMP "res/gowt.bmp"
-  draw <- loadBMP "res/draw.bmp"
+  bp    <- loadBMP "res/black2.bmp"
+  wp    <- loadBMP "res/white2.bmp"
+  hp    <- loadBMP "res/hint2.bmp"
+  tp    <- loadBMP "res/blank.bmp" 
+  gob   <- loadBMP "res/goblack.bmp"
+  gow   <- loadBMP "res/gowhite.bmp"
+  gobt  <- loadBMP "res/gobt.bmp"
+  gowt  <- loadBMP "res/gowt.bmp"
+  draw  <- loadBMP "res/draw.bmp"
   pause <- loadBMP "res/pause.bmp"
   return $ Bitmaps bp wp hp tp gob gow gobt gowt draw pause
 
 width = 800.0
 height = 800.0
 gridPos = width/2.0
+
+defaultSquareWidth = 8
+
+
+{- Helper functons for defining grid spaces -}
+
+-- | Calculates the factor the bitmaps have to be scaled 
+-- depending on the board size
+scaleFactor :: Int  -- ^ Size of the board
+            -> Float
+scaleFactor sz = defaultSquareWidth / fromIntegral sz
 
 -- | Calculates the width of a single square based on board sz
 rectSize :: Int    -- ^ The sz of the board/number of squares in a row
@@ -54,9 +66,6 @@ getCol :: Col -> Color
 getCol Black = black
 getCol White = white
 
-{- Drawing with Bitmap images -}
-
-
 -- | Converts an x position to an x position on the GUI for squares
 squarePosX :: Int   -- ^ Size of the grid
            -> Float -- ^ The position to be converted
@@ -69,56 +78,51 @@ squarePosY :: Int   -- ^ Size of the grid
            -> Float -- ^ Returns the converted position
 squarePosY s y = gridPos - pieceSize s - (rectSize s * y) 
 
-defaultSquareWidth = 8
-
-scaleFactor :: Int -> Float
-scaleFactor sz = defaultSquareWidth / fromIntegral sz
-
 
 hintFunc :: Bool -> Col -> (Board -> [Position])
 hintFunc True _ = checkStart
 hintFunc _    c = checkNormal c
 
---IO version of draw world
-drawWorldIO :: Bitmaps -> World -> IO Picture
--- Draw gameover
-drawWorldIO bitmaps (World b _ _ _ _ btime wtime _ _ _ True _ _) = return $ getWinner bitmaps b btime wtime
 
--- Draw pause
-drawWorldIO bitmaps (World _ _ _ _ _ _ _ True _ _ _ _ _) = return $ pause bitmaps
+{- Drawing -}
 
--- Draws hints for reversi start
-drawWorldIO bitmaps w@(World b turn _ _ _ _ _ _ True r _ _ _) = do
-  hints <- drawHints (hp bitmaps) (size b) (hintFunc r turn b)
-  world <- drawWorldIO bitmaps w{ showValid = False}
-  return $ pictures [world, hints]
+-- | Main draw world function passed into playIO
+drawWorldIO :: Bitmaps -- ^ Data structure with loaded bitmaps stored
+            -> World   -- ^ The world to be drawn
+            -> IO Picture
+drawWorldIO bitmaps w@(World b@(Board sz ps pc) turn _ bt wt btime wtime isP h r go _ _)
+  -- Draw gameover
+  | go        = return $ getWinner bitmaps b btime wtime
 
--- Draw otherwise
-drawWorldIO bitmaps (World (Board sz ps pc) _ _ bt wt btime wtime _ _ _ _ _ _) = do
-  board     <- drawBoardBMP (tp bitmaps) sz
-  pieces    <- drawPiecesBMP (bp bitmaps) (wp bitmaps) sz pc
-  numBlack  <- drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) 1700 1000
-  numWhite  <- drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 1000
-  timeBlack <- blackTime bt btime
-  timeWhite <- whiteTime wt wtime
-  return $ pictures [ board, pieces
-                    , numBlack, numWhite
-                    ,timeBlack, timeWhite]
+  -- Draw pause
+  | isP       = return $ pause bitmaps
+
+  -- Draw hints
+  | h         = do hints <- drawHints (hp bitmaps) sz (hintFunc r turn b)
+                   world <- drawWorldIO bitmaps w{ showValid = False}
+                   return $ pictures [world, hints]
+
+  -- Draw otherwise
+  | otherwise = do board  <- drawBoardBMP (tp bitmaps) sz
+                   pieces <- drawPiecesBMP (bp bitmaps) (wp bitmaps) sz pc
+                   numb   <- drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) 1700 1000
+                   numw   <- drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 1000
+                   timeb  <- timeLeft bt btime (1700,(-500))
+                   timew  <- timeLeft wt wtime ((-2300),(-500))
+                   return $ pictures [board, pieces, numb, numw, timeb, timew]
 
 
-timeLeft :: PlayerType -> Int -> (Int, Int) -> IO Picture
+-- | Draw the time left for each player
+timeLeft :: PlayerType        -- ^ Only draw if the playertype is human
+            -> Int            -- ^ The time left
+            -> (Float, Float) -- ^ The (x,y) offset where the time should be drawn on the screen
+            -> IO Picture
 timeLeft Human time (x,y) = drawText ("Time: " ++ show (div time 100)) x y
 timeLeft _     _    _     = return Blank
 
-blackTime :: PlayerType -> Int -> IO Picture
-blackTime Human btime = drawText ("Time: " ++ show (div btime 100)) 1700 (-500)
-blackTime _     _     = return Blank
 
-whiteTime :: PlayerType -> Int -> IO Picture
-whiteTime Human wtime = drawText ("Time: " ++ show (div wtime 100)) (-2300) (-500)
-whiteTime _     _     = return Blank
 
-{- Draw for individual components -}
+{- Drawing for individual components -}
 
 -- | Draws the empty board
 drawBoardBMP :: Picture  -- ^ Picture of the board tile
@@ -130,11 +134,11 @@ drawBoardBMP tp sz = do
 
 
 -- | Gets a string stating the outcome of a game based on a board
-getWinner :: Bitmaps
+getWinner :: Bitmaps -- ^ The saved bitmaps
           -> Board   -- ^ The board to evaluate to find winner
           -> Int     -- ^ The current time left for black
           -> Int     -- ^ The current time left for white
-          -> Picture  -- Returns the winning screen
+          -> Picture -- Returns the winning screen
 getWinner bitmaps b btime wtime | btime <= 0 = gowt bitmaps
                                 | wtime <= 0 = gobt bitmaps
                                 | x == y     = draw bitmaps
@@ -163,6 +167,7 @@ drawHints hp sz ((x,y):ps) = do
                     , hints
                     ]
 
+
 -- | Draw an empty space onto the board
 drawEmptyPiece :: Picture   -- ^ Picture for the individual spaces
                -> Int       -- ^ The size of the board
@@ -183,6 +188,7 @@ drawPiecesBMP bp wp sz (((x,y),col):ps) = do
   piece   <- drawPieceBMP bp wp sz (squarePosX sz $ fromIntegral x) (squarePosY sz $ fromIntegral y) col
   pieces  <- drawPiecesBMP bp wp sz ps
   return $ pictures [piece, pieces]
+
 
 -- | Draw a single piece onto the board
 drawPieceBMP :: Picture  -- ^ Picture for the black piece
