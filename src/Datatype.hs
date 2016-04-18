@@ -24,8 +24,7 @@ data Board = Board { size :: Int,
 data PlayerType = Human 
                 | AI
                 | Random
-                | Client
-                | Server
+                | Network
   deriving (Show, Eq)
 
 -- Overall state is the board and whose turn it is, plus any further
@@ -37,8 +36,7 @@ data PlayerType = Human
 -- most recent moves were).
 data World = World { board :: Board,
                      turn :: Col,
-                     stateList :: [(Board, Col, Int, Int)], -- Need to store colour of turn in case of pass
-                                                              -- (Int,Int) for storing timers
+                     stateList :: [(Board, Col, Int, Int)],
                      bType :: PlayerType,
                      wType :: PlayerType,
                      bTimer :: Int,
@@ -84,18 +82,16 @@ instance Binary World where
 
 -- Binary encoding and decoding for PlayerType
 instance Binary PlayerType where
-  put Human  = put (0 :: Word8)
-  put AI     = put (1 :: Word8)
-  put Random = put (2 :: Word8)
-  put Server = put (3 :: Word8)
-  put Client = put (4 :: Word8)
+  put Human   = put (0 :: Word8)
+  put AI      = put (1 :: Word8)
+  put Random  = put (2 :: Word8)
+  put Network = put (3 :: Word8)
   get = do t <- get :: Get Word8
            case t of 
             0 -> return Human
             1 -> return AI 
             2 -> return Random
-            3 -> return Server
-            4 -> return Client 
+            3 -> return Network
 
 -- Binary encoding and decoding for colour
 instance Binary Col where

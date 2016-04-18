@@ -12,6 +12,7 @@ import Debug.Trace
 
 import Datatype
 
+-- The default board width and starting time in milliseconds
 defaultBoardSize = 8
 startTime = 60000
 
@@ -28,12 +29,13 @@ initWorld :: [String]     -- ^ List of command line arguments
           -> IO World     -- ^ Returns initialised world
 initWorld args = do w <- setArgs args (World initBoard Black [] Human Human startTime startTime False False False False True Nothing)
                     case sock w of
+                        -- return world normally if nor on network
                         Nothing -> return $ setBasePositions w
-                        -- If client side for network get base world from server
-                        -- If server side then send base world to client
+                                -- If client side for network get base world from server
                         Just s  | not (serverSide w) -> do inputByteString <- recv s 65536
                                                            let serverW = decode inputByteString
                                                            return serverW {sock = Just s, serverSide = False}
+                                -- If server side then send base world to client
                                 | otherwise          -> do let startW = setBasePositions w
                                                                outputByteString = encode startW
                                                            sendAll s outputByteString
@@ -55,8 +57,10 @@ setBasePositions w@(World _ _ _ _ _ _ _ _ _ True _ _ _) = w
 -- | Takes a default world from initWorld and alters it depending on arguments
 setArgs :: [String]  -- ^ List of command line arguments
         -> World     -- ^ The world to alter depending on flags
-        -> IO World   -- ^ Returns a world updated depending on flags
+        -> IO World  -- ^ Returns a world updated depending on flags
 setArgs [] w = return w
+
+-- For server argument set up server socket and set player types to network
 setArgs ("-server":xs) w = do addrInfos <- getAddrInfo
                                            (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
                                            Nothing (Just "21821")
@@ -65,9 +69,12 @@ setArgs ("-server":xs) w = do addrInfos <- getAddrInfo
                               bind s (addrAddress serverAddr)
                               listen s 1
                               (conn, address) <- accept s
-                              setArgs xs (w {sock = Just conn, bType = Server, wType = Client})
+                              setArgs xs (w {sock = Just conn, bType = Network, wType = Network})
 
-setArgs ("-client":xs) w = do let a = getAddrArg xs
+-- For client argument get following hostname argument and connect to host
+setArgs ("-client":xs) w | null xs = error "Error, host name argument required for client to connect to"
+                         | otherwise = do 
+                              let a = (head xs)
                               addrInfos <- getAddrInfo
                                            (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
                                            (Just a) (Just "21821")
@@ -76,57 +83,50 @@ setArgs ("-client":xs) w = do let a = getAddrArg xs
                               connect s (addrAddress serverAddr)
                               return w {sock = Just s, serverSide = False}
 
-setArgs ("-s":xs) w@(World (Board _ ps pc) _ _ _ _ _ _ _ _ _ _ _ _) 
-                    | null xs = error "A number is required after -s flag to determine size of board"
-                    | null readResult = error "An integer is required after the -s flag"
-                    | snd (head readResult) == "" = 
-                        let val = fst (head readResult)
-                            result | val < 4   = error "Grid must be at least 4x4"
-                                   | val > 16  = error "Grid cannot be larger than 16x16"
-                                   | odd val   = error "Grid width must be even"
-                                   | otherwise = setArgs (tail xs) w {board = Board (fst(head readResult)) ps pc}
-                            in result
-                    | otherwise = error "An integer is required after -s"
+-- For size argument get following integer size argument and set board size
+setArgs ("-s":xs) w
+                     | null xs = error "A number is required after -s flag to determine size of board"
+                     | null readResult = error "An integer is required after the -s flag"
+                     | snd (head readResult) == "" 
+                    && newSize > 3
+                    && newSize <17
+                    && even newSize = setArgs (tail xs) (w {board = ((board w) {size = newSize})})
+                     | snd (head readResult) == "" = error "Size must be at least 4, no more than 16 and even"
+                     | otherwise = error "An integer is required after -s"
                         where readResult = reads (head xs) :: [(Int, String)]
+                              newSize    = (fst (head readResult))
 
+-- For r argument set chooseStart to true so players can choose start positions
 setArgs ("-r":xs)  w = setArgs xs (w {chooseStart = True})
-setArgs ("-ab":xs) w = if isNothing (sock w)   -- make sure ai doesn't take priority over server types
-                          then setArgs xs (w {bType = AI})  
-                          else setArgs xs w
-setArgs ("-aw":xs) w = if isNothing (sock w)
-                          then setArgs xs (w {wType = AI})
-                          else setArgs xs w
-setArgs ("-rb":xs) w = if isNothing (sock w)   -- make sure ai doesn't take priority over server types
-                          then setArgs xs (w {bType = Random})  
-                          else setArgs xs w
-setArgs ("-rw":xs) w = if isNothing (sock w)
-                          then setArgs xs (w {wType = Random})
-                          else setArgs xs w
+
+-- For h arguments set showValid to true so hints are on
 setArgs ("-h":xs)  w = setArgs xs (w {showValid = True})
-setArgs (x:xs)     _ = error ("Unrecognised flag: " ++ x)
+
+-- Otherwise if their is an AI argument, ignore it if server is on and set AI if server is off
+-- If argument is not recognised then display an error
+setArgs (x:xs)     w | isJust (sock w) 
+                    && (x == "-ab" || x == "-rb" || x == "-aw" || x == "-rw") = setArgs xs w
+                     | x == "-ab" = setArgs xs (w {bType = AI})
+                     | x == "-rb" = setArgs xs (w {bType = Random})
+                     | x == "-aw" = setArgs xs (w {wType = AI})
+                     | x == "-rw" = setArgs xs (w {wType = Random})
+                     | otherwise  = error ("Unrecognised flag: " ++ x)
 
 
--- | Gets a server address from arguments
-getAddrArg :: [String]  -- ^ List of arguments to get address from
-           -> String    -- ^ Returns the argument for host name if there is one
-getAddrArg [] = error "Error, host name argument required for client to connect to"
-getAddrArg xs = head xs
-
-
--- | Checks if there are any possible moves for a given colour, abstracts over looping in checkAvailable
-validMovesAvailable :: Board  -- ^ The board to be checked
-                    -> Col    -- ^ The colour to be checked for valid moves
-                    -> Bool   -- ^ Returns False if there are no valid moves and True otherwise
-validMovesAvailable b c = (length (checkNormal c b)) /= 0
-
-checkNormal :: Col -> Board -> [Position]
+-- | Abstracts over checkAvailable, gets a list of all available moves on a board
+checkNormal :: Col         -- ^ Colour to check available moves for
+            -> Board       -- ^ Board to check
+            -> [Position]  -- ^ Returns list of available moves
 checkNormal c b = checkAvailable b (0,0) c
+
 
 -- | Loops through board checking if there are any valid moves
 checkAvailable :: Board      -- ^ The board to be checked
                -> Position   -- ^ The position to be checked
                -> Col        -- ^ The colour for checking whether this position would be a valid move
-               -> [Position] -- ^ Returns True if a valid move is found and False otherwise
+               -> [Position] -- ^ Returns a list of all valid positions
+-- If a position is at the end of a row, checkAvailable for start of next row, 
+-- if at end of last row finish checking, otherwise just checkAvailable for next in row
 checkAvailable b (x, y) c | x==(size b - 1) 
                          && y==(size b - 1) 
                          && isValidMove b (x,y) c = [(x,y)]
@@ -139,33 +139,11 @@ checkAvailable b (x, y) c | x==(size b - 1)
                           | otherwise             = checkAvailable b (x,y+1) c
 
 
--- | Gets a list of unfilled starting positions, abstracts over availableStart
--- Initial arguments
+-- | Gets a list of unfilled starting positions
 checkStart :: Board       -- ^ Board to check
            -> [Position]  -- ^ returns a list of unfilled starting positions
-checkStart b = availableStart b (mid -1, mid -1)
+checkStart b = filter (\x -> not (containsPiece b x)) [(mid -1, mid -1),(mid -1, mid),(mid, mid -1),(mid, mid)]
                   where mid = div (size b) 2
-
--- | Loop through starting positions and get list of unfilled positions
-availableStart :: Board      -- ^ Board to check
-               -> Position   -- ^ position to check
-               -> [Position] -- ^ returns list of unfilled starting function
-availableStart b (x, y) | x == (mid - 1) 
-                       && y == (mid - 1) 
-                       && containsPiece b (x,y) = availableStart b (mid,mid - 1)
-                        | x == (mid - 1) 
-                       && y == (mid - 1)        = (x,y):availableStart b (mid,mid - 1)
-                        | x ==  mid 
-                       && y == (mid - 1) 
-                       && containsPiece b (x,y) = availableStart b (mid - 1,mid)
-                        | x ==  mid 
-                       && y == (mid - 1)        = (x,y):availableStart b (mid - 1,mid)
-                        | x == (mid -1) 
-                       && containsPiece b (x,y) = availableStart b (mid,mid)
-                        | x == (mid - 1)        = (x,y):availableStart b (mid,mid)
-                        | containsPiece b (x,y) = []
-                        | otherwise             = [(x,y)]
-                            where mid = div (size b) 2
 
 
 -- | Checks if a move is valid (it will actually flip some pieces)
@@ -183,6 +161,7 @@ getPosList :: Board      -- ^ The board to check
            -> [Position] -- ^ Returns a list of pieces that will be flipped
 getPosList b (x,y) c = nList ++ eList ++ sList ++ wList ++ nwList ++ neList ++ swList ++ seList  
                        where
+                           -- list of flips for all directions
                            nList  = checkFlips []  b (x,y) (0, -1)  c
                            eList  = checkFlips []  b (x,y) (1, 0)   c
                            sList  = checkFlips []  b (x,y) (0, 1)   c
@@ -231,6 +210,7 @@ flipPieces  :: [(Position, Col)]  -- ^ The list of pieces on the board
 flipPieces [] _ = []
 flipPieces a [] = a
 flipPieces boardPieces (newPiece:newPieces) = flipPieces (flipPiece boardPieces newPiece) newPieces
+
 
 -- | Flips a single piece on the board
 flipPiece :: [(Position,Col)]  -- ^ List of pieces on the board
@@ -296,7 +276,7 @@ gameOver :: Board  -- ^ Board to check for game being over
          -> Bool   -- ^ Return true of game is over and false otherwise
 gameOver Board {passes = 2} = True
 gameOver Board {pieces = x, size = s} | length x < (s ^ 2) = False
-                                      | otherwise            = True
+                                      | otherwise           = True
 
 -- | An evaluation function for a minimax search. 
 -- Given a board and a colour return an integer indicating how good the board is for that colour.
@@ -313,13 +293,12 @@ evaluate Board {pieces = ((_, colour1):xs), size = s} colour2
 -- recorded and reverted to
 undoTurn :: World  -- ^ The world to be reverted to the previuos turn
          -> World  -- ^ returns the world in its previos turn
+
+-- Do not undo if there are no previous states
 undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
          trace "Cannot undo further back than current state" w
-undoTurn w@(World _ _ ((x,y,i,j):xs) bt wt _ _ _ _ _ _ _ _) 
-         | bt == Human && wt == Human = trace "Reverted to previous player turn"
-           w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
-         | bt == Human                = trace "Reverted to previous player turn"
-           w {board = x, turn = Black, stateList = xs, bTimer = i, wTimer = j}
-         | wt == Human                = trace "Reverted to previous player turn"
-           w {board = x, turn = White, stateList = xs, bTimer = i, wTimer = j}
-         | otherwise = trace "Cannot revert during AI turn" w
+
+-- Revert to previous human player turn otherwise
+undoTurn w@(World _ _ ((x,y,i,j):xs) _ ciw_wt _ _ _ _ _ _ _ _) = 
+         trace "Reverted to previous player turn"
+         w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
