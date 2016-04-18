@@ -91,9 +91,11 @@ hintFunc _    c = checkNormal c
 drawWorldIO :: Bitmaps -- ^ Data structure with loaded bitmaps stored
             -> World   -- ^ The world to be drawn
             -> IO Picture
-drawWorldIO bitmaps w@(World b@(Board sz ps pc) turn _ bt wt btime wtime isP h r go _ _)
+drawWorldIO bitmaps w@(World b@(Board sz _ pc) turn _ bt wt btime wtime isP h r go _ _)
   -- Draw gameover
-  | go        = return $ getWinner bitmaps b btime wtime
+  | go        = do let screen =  (getWinner bitmaps b btime wtime)
+                   totals <- (currentPieces b)
+                   return $ pictures [screen, totals]
 
   -- Draw pause
   | isP       = return $ pause bitmaps
@@ -106,21 +108,28 @@ drawWorldIO bitmaps w@(World b@(Board sz ps pc) turn _ bt wt btime wtime isP h r
   -- Draw otherwise
   | otherwise = do board  <- drawBoardBMP (tp bitmaps) sz
                    pieces <- drawPiecesBMP (bp bitmaps) (wp bitmaps) sz pc
-                   numb   <- drawText ("Black: " ++ (show $ evaluate (Board sz ps pc) Black)) 1700 1000
-                   numw   <- drawText ("White: " ++ (show $ evaluate (Board sz ps pc) White)) (-2300) 1000
+                   totals <- (currentPieces b)
                    timeb  <- timeLeft bt btime (1700,(-500))
                    timew  <- timeLeft wt wtime ((-2300),(-500))
-                   return $ pictures [board, pieces, numb, numw, timeb, timew]
+                   return $ pictures [board, pieces, totals, timeb, timew]
 
 
 -- | Draw the time left for each player
-timeLeft :: PlayerType        -- ^ Only draw if the playertype is human
-            -> Int            -- ^ The time left
-            -> (Float, Float) -- ^ The (x,y) offset where the time should be drawn on the screen
-            -> IO Picture
+timeLeft :: PlayerType     -- ^ Only draw if the playertype is human
+         -> Int            -- ^ The time left
+         -> (Float, Float) -- ^ The (x,y) offset where the time should be drawn on the screen
+         -> IO Picture
 timeLeft Human time (x,y) = drawText ("Time: " ++ show (div time 100)) x y
 timeLeft _     _    _     = return Blank
 
+
+-- | Draw current number of pieces for each player
+currentPieces :: Board       -- ^ Board to draw pieces for
+              -> IO Picture
+currentPieces b = do
+    numb <- drawText ("Black: " ++ (show $ evaluate b Black)) 1700 1000
+    numw <- drawText ("White: " ++ (show $ evaluate b White)) (-2300) 1000
+    return $ pictures [numb, numw]
 
 
 {- Drawing for individual components -}
