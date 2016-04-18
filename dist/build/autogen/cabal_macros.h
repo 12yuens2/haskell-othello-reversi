@@ -35,3 +35,10 @@
   (major1) == 2 && (major2) <  6 || \
   (major1) == 2 && (major2) == 6 && (minor) <= 2)
 
+/* package random-1.1 */
+#define VERSION_random "1.1"
+#define MIN_VERSION_random(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  1 || \
+  (major1) == 1 && (major2) == 1 && (minor) <= 0)
+
