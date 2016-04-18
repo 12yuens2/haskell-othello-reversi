@@ -9,6 +9,8 @@ import Board
 
 import Debug.Trace
 
+import Data.Maybe
+
 data GameTree = GameTree { game_board :: Board,
                            game_turn :: Col,
                            next_moves :: [(Position, GameTree)] }
@@ -118,15 +120,14 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
     | not (r || validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
                                            $ return w {board = b{passes = passes b + 1}, turn = other c}
     | p || (r && sk == Nothing) || (sk /= Nothing && (sd && c == Black || not sd && c == White)) = return w
-    | r || sk /= Nothing = 
-        case sk of
-          Just s -> withSocketsDo $
-            do inputByteString <- recv s 65536
-               let b' = decode (inputByteString)
-               return $ w {board = b', 
-                           turn = (other c), 
-                           chooseStart = (length (pieces b') < 4)
-                          }
+    | isJust sk = 
+        do let s = fromJust sk
+           inputByteString <- recv s 65536
+           let b' = decode (inputByteString)
+           return $ w {board = b', 
+                       turn = (other c), 
+                       chooseStart = (length (pieces b') < 4)
+                      }
     | c == Black && bt == Human = return w {bTimer = btime - 10}
     | c == White && wt == Human = return w {wTimer = wtime - 10}
     | otherwise = let
