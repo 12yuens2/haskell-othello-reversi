@@ -3,138 +3,30 @@ module Board where
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString.Lazy
 import Data.Binary
+import Data.Maybe
 
 import System.Environment
-import Data.Binary
 import Control.Monad
 
 import Debug.Trace
 
+import Datatype
+
 defaultBoardSize = 8
 startTime = 200000
 
-data Col = Black | White
-  deriving (Show, Eq)
-
+-- | Changes to the other colour
 other :: Col -> Col
 other Black = White
 other White = Black
 
-type Position = (Int, Int)
-
--- A Board is a record containing the board size (a board is a square grid, n *
--- n), the number of consecutive passes, and a list of pairs of position and
--- the colour at that position.
-
-data Board = Board { size :: Int,
-                     passes :: Int,
-                     pieces :: [(Position, Col)]
-                   }
-  deriving Show
-
 -- Default board is 8x8, neither played has passed, and is empty, filled later if not reversi
 initBoard = Board defaultBoardSize 0 []
-
-
--- | PlayerType represents whether the player is Human or AI (more types
--- can be added in future for different AI types)
-data PlayerType = Human 
-                | AI
-                | Client
-                | Server
-  deriving (Show, Eq)
-
--- Overall state is the board and whose turn it is, plus any further
--- information about the world (this may later include, for example, player
--- names, timers, information about rule variants, etc)
---
--- Feel free to extend this, and 'Board' above with anything you think
--- will be useful (information for the AI, for example, such as where the
--- most recent moves were).
-data World = World { board :: Board,
-                     turn :: Col,
-                     stateList :: [(Board, Col, Int, Int)], -- Need to store colour of turn in case of pass
-                                                              -- (Int,Int) for storing timers
-                     bType :: PlayerType,
-                     wType :: PlayerType,
-                     bTimer :: Int,
-                     wTimer :: Int,
-                     pause :: Bool,
-                     showValid :: Bool,
-                     chooseStart :: Bool,
-                     gameIsOver :: Bool,
-                     serverSide :: Bool,
-                     sock       :: Maybe Socket
-                     }
-  deriving Show
-
--- probably don't need to encode server side info as cannot save when server running
-instance Binary World where
-  put (World b t sts bt wt btime wtime p v r go sd sk) = do 
-                                        put b
-                                        put t
-                                        put sts
-                                        put bt
-                                        put wt
-                                        put btime
-                                        put wtime
-                                        put p
-                                        put v
-                                        put r
-                                        put go
-                                        put sd
-  get = do b <- get
-           t <- get
-           sts <- get
-           bt <- get
-           wt <- get
-           btime <- get
-           wtime <- get
-           p <- get
-           v <- get
-           r <- get
-           go <- get
-           sd <- get
-           return (World b t sts bt wt btime wtime p v r go sd Nothing)
-
--- Binary encoding and decoding for PlayerType
-instance Binary PlayerType where
-  put Human  = do put (0 :: Word8)
-  put AI     = do put (1 :: Word8)
-  put Server = do put (2 :: Word8)
-  put Client = do put (3 :: Word8)
-  get = do t <- get :: Get Word8
-           case t of 
-            0 -> return Human
-            1 -> return AI 
-            2 -> return Server
-            3 -> return Client 
-
--- Binary encoding and decoding for colour
-instance Binary Col where
-  put Black = do put (0 :: Word8)
-  put White = do put (1 :: Word8)
-  get = do t <- get :: Get Word8
-           case t of 
-            0 -> return Black
-            1 -> return White
-
--- Binary encoding and decoding for board
-instance Binary Board where
-  put (Board sz ps pc) = do put sz
-                            put ps
-                            put pc
-  get = do sz <- get
-           ps <- get
-           pc <- get
-           return (Board sz ps pc)
-
-
 
 -- | initialises the world based on the arguments passed to it
 initWorld :: [String]     -- ^ List of command line arguments
           -> IO World     -- ^ Returns initialised world
-initWorld args = do w <- (setArgs args (World initBoard Black [] Human Human startTime startTime False False False False True Nothing))
+initWorld args = do w <- setArgs args (World initBoard Black [] Human Human startTime startTime False False False False True Nothing)
                     case sock w of
                         Nothing -> return $ setBasePositions w
                         -- If client side for network get base world from server
@@ -153,10 +45,10 @@ setBasePositions :: World  -- ^ The world to set positions in
                  -> World  -- ^ Returns world updated with updated positoins
 setBasePositions w@(World (Board sz ps _) _ _ _ _ _ _ _ _ False _ _ _)
                  = let mid = div sz 2 in
-                       w {board =  (Board sz ps 
+                       w {board =  Board sz ps 
                                     [((mid-1,mid-1), Black), ((mid-1,mid), White),
                                     ((mid,mid-1), White), ((mid,mid), Black)]
-                                   )} 
+                                   } 
 setBasePositions w@(World _ _ _ _ _ _ _ _ _ True _ _ _) = w
 
 
@@ -185,23 +77,23 @@ setArgs ("-client":xs) w = do let a = getAddrArg xs
                               return w {sock = Just s, serverSide = False}
 
 setArgs ("-s":xs) w@(World (Board _ ps pc) _ _ _ _ _ _ _ _ _ _ _ _) 
-                    | xs == [] = error "A number is required after -s flag to determine size of board"
-                    | readResult == [] = error "An integer is required after the -s flag"
-                    | (snd (head readResult)) == "" = 
-                        let val = (fst (head readResult))
+                    | null xs = error "A number is required after -s flag to determine size of board"
+                    | null readResult = error "An integer is required after the -s flag"
+                    | snd (head readResult) == "" = 
+                        let val = fst (head readResult)
                             result | val < 4   = error "Grid must be at least 4x4"
                                    | val > 16  = error "Grid cannot be larger than 16x16"
                                    | odd val   = error "Grid width must be even"
-                                   | otherwise = setArgs (tail xs) w {board = (Board (fst(head readResult)) ps pc)}
+                                   | otherwise = setArgs (tail xs) w {board = Board (fst(head readResult)) ps pc}
                             in result
                     | otherwise = error "An integer is required after -s"
-                        where readResult = (reads (head xs)) :: [(Int, String)]
+                        where readResult = reads (head xs) :: [(Int, String)]
 
 setArgs ("-r":xs)  w = setArgs xs (w {chooseStart = True})
-setArgs ("-ab":xs) w = if sock w == Nothing   -- make sure ai doesn't take priority over server types
+setArgs ("-ab":xs) w = if isNothing (sock w)   -- make sure ai doesn't take priority over server types
                           then setArgs xs (w {bType = AI})  
                           else setArgs xs w
-setArgs ("-aw":xs) w = if sock w == Nothing
+setArgs ("-aw":xs) w = if isNothing (sock w)
                           then setArgs xs (w {wType = AI})
                           else setArgs xs w
 setArgs ("-h":xs)  w = setArgs xs (w {showValid = True})
@@ -235,9 +127,9 @@ checkAvailable b (x, y) c | x==(size b - 1)
                           | x==(size b - 1) 
                          && y==(size b - 1)       = []
                           | y==(size b - 1) 
-                         && isValidMove b (x,y) c = ((x,y):(checkAvailable b (x+1,0) c))
+                         && isValidMove b (x,y) c = (x,y):checkAvailable b (x+1,0) c
                           | y==(size b - 1)       = checkAvailable b (x+1, 0) c
-                          | isValidMove b (x,y) c = ((x,y):(checkAvailable b (x,y+1) c))
+                          | isValidMove b (x,y) c = (x,y):checkAvailable b (x,y+1) c
                           | otherwise             = checkAvailable b (x,y+1) c
 
 
@@ -256,15 +148,15 @@ availableStart b (x, y) | x == (mid - 1)
                        && y == (mid - 1) 
                        && containsPiece b (x,y) = availableStart b (mid,mid - 1)
                         | x == (mid - 1) 
-                       && y == (mid - 1)        = (x,y):(availableStart b (mid,mid - 1))
+                       && y == (mid - 1)        = (x,y):availableStart b (mid,mid - 1)
                         | x ==  mid 
                        && y == (mid - 1) 
                        && containsPiece b (x,y) = availableStart b (mid - 1,mid)
                         | x ==  mid 
-                       && y == (mid - 1)        = (x,y):(availableStart b (mid - 1,mid))
+                       && y == (mid - 1)        = (x,y):availableStart b (mid - 1,mid)
                         | x == (mid -1) 
                        && containsPiece b (x,y) = availableStart b (mid,mid)
-                        | x == (mid - 1)        = (x,y):(availableStart b (mid,mid))
+                        | x == (mid - 1)        = (x,y):availableStart b (mid,mid)
                         | containsPiece b (x,y) = []
                         | otherwise             = [(x,y)]
                             where mid = div (size b) 2
@@ -275,7 +167,7 @@ isValidMove :: Board  -- ^ The board to be checked
          -> Position  -- ^ The position the move will place a piece 
          -> Col       -- ^ The colour of the piece being placed
          -> Bool      -- ^ Returns True if move is valid and False otherwise
-isValidMove b (x,y) c = (not (containsPiece b (x,y))) && ((length (getPosList b (x,y) c)) /= 0)
+isValidMove b (x,y) c = not (containsPiece b (x,y)) && not (null (getPosList b (x,y) c))
 
 -- | Gets a list of positions of pieces that will be flipped if a piece of the 
 --   specified colour is places in the specified position
@@ -301,9 +193,9 @@ makeMove :: Board        -- ^ Board to make move on
          -> Position     -- ^ Position to place new piece
          -> Col          -- ^ Colour of new piece to place
          -> Maybe Board  -- ^ returns new board if move successful or Nothing if move was invalid
-makeMove b (x,y) c | (containsPiece b (x,y)) = Nothing
-                   | length posList == 0     = Nothing
-                   | otherwise               = Just (flipping (Board (size b) 0 (((x,y),c):(pieces b))) posList)
+makeMove b (x,y) c | containsPiece b (x,y)   = Nothing
+                   | null posList            = Nothing
+                   | otherwise               = Just (flipping (Board (size b) 0 (((x,y),c):pieces b)) posList)
                    where
                        posList = getPosList b (x,y) c
 
@@ -312,9 +204,9 @@ startMove :: Board        -- ^ Board to place starting piece on
           -> Position     -- ^ Positon to place starting piece
           -> Col          -- ^ Colour of piece to place
           -> Maybe Board  -- ^ Returns new board if move successful or Nothing if move was invalid
-startMove b (x,y) c | (containsPiece b (x,y)) = Nothing
+startMove b (x,y) c | containsPiece b (x,y) = Nothing
                     | (x == mid || x == mid - 1) &&
-                      (y == mid || y == mid - 1)    = Just (b {pieces = ((x,y),c):(pieces b)})
+                      (y == mid || y == mid - 1)    = Just (b {pieces = ((x,y),c):pieces b})
                     | otherwise                     = Nothing
                         where mid = div (size b) 2
 
@@ -332,7 +224,7 @@ flipPieces  :: [(Position, Col)]  -- ^ The list of pieces on the board
             -> [(Position, Col)]  -- ^ Returns a list of pieces with pieces flipped
 flipPieces [] _ = []
 flipPieces a [] = a
-flipPieces boardPieces (newPiece:newPieces) = (flipPieces (flipPiece boardPieces newPiece) newPieces)
+flipPieces boardPieces (newPiece:newPieces) = flipPieces (flipPiece boardPieces newPiece) newPieces
 
 -- | Flips a single piece on the board
 flipPiece :: [(Position,Col)]  -- ^ List of pieces on the board
@@ -341,8 +233,8 @@ flipPiece :: [(Position,Col)]  -- ^ List of pieces on the board
 flipPiece [] _ = []
 flipPiece (((x,y),c):pieces) (newX, newY)
     = if x == newX && y == newY
-        then ((x,y),(other c)):pieces --return when a piece has been flipped
-        else ((x,y),c):(flipPiece pieces (newX,newY))
+        then ((x,y),other c):pieces --return when a piece has been flipped
+        else ((x,y),c):flipPiece pieces (newX,newY)
 
 
 -- | Checks the board for any pieces that would be flipped 
@@ -371,9 +263,7 @@ containsPiece :: Board     -- ^ Board to check
               -> Bool      -- ^ Returns true if position contains a piece and false otherwise
 containsPiece (Board s p []) (x,y) = False
 containsPiece (Board s p (piece:pieces)) (x,y) 
-    = if (fst (fst piece)) == x && (snd (fst piece)) == y
-        then True
-        else containsPiece (Board s p pieces) (x,y)
+    = (fst (fst piece) == x && snd (fst piece) == y) || containsPiece (Board s p pieces) (x,y)
 
 
 -- | Gets the colour of the piece at the given position. Assume that a piece 
@@ -381,9 +271,9 @@ containsPiece (Board s p (piece:pieces)) (x,y)
 getPieceColor :: Board     -- ^ The board to check
               -> Position  -- ^ The position on the board to check
               -> Col       -- ^ Returns the colour of the piece at this spot
-getPieceColor (Board s p []) (x,y) = error("No piece at that position")
+getPieceColor (Board s p []) (x,y) = error "No piece at that position"
 getPieceColor (Board s p (piece:pieces)) (x,y)
-    = if (fst (fst piece)) == x && (snd (fst piece)) == y
+    = if fst (fst piece) == x && snd (fst piece) == y
         then snd piece
         else getPieceColor (Board s p pieces) (x,y)
 
@@ -399,7 +289,7 @@ checkScore b = (evaluate b Black, evaluate b White)
 gameOver :: Board  -- ^ Board to check for game being over
          -> Bool   -- ^ Return true of game is over and false otherwise
 gameOver Board {passes = 2} = True
-gameOver Board {pieces = x, size = s} | (length x) < (s ^ 2) = False
+gameOver Board {pieces = x, size = s} | length x < (s ^ 2) = False
                                       | otherwise            = True
 
 -- | An evaluation function for a minimax search. 
@@ -409,7 +299,7 @@ evaluate :: Board  -- ^ The board to evaluate
          -> Int    -- ^ Returns number of pieces on boards for chosen colour
 evaluate Board {pieces = []} _ = 0
 evaluate Board {pieces = ((_, colour1):xs), size = s} colour2  
-        | colour1 == colour2 = (evaluate (Board s 0 xs) colour2) + 1
+        | colour1 == colour2 = evaluate (Board s 0 xs) colour2 + 1
         | otherwise          = evaluate (Board s 0 xs) colour2
 
 
@@ -425,8 +315,8 @@ yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
        || (x,y) == (0,s-1) 
        || (x,y) == (s-1,0) 
        || (x,y) == (s-1,s-1) = if colour1 == colour2 
-                                  then (yusukiEvaluate (Board s 0 xs) colour2) + 1000
-                                  else (yusukiEvaluate (Board s 0 xs) colour2) - 1000
+                                  then yusukiEvaluate (Board s 0 xs) colour2 + 1000
+                                  else yusukiEvaluate (Board s 0 xs) colour2 - 1000
 
        --Give lower values for positions next to corners
         | (x,y) == (1,0)    || (x,y) == (1,1)   || (x,y) == (0,1)
@@ -434,19 +324,19 @@ yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
        || (x,y) == (s-2,0)  || (x,y) == (s-2,1) || (x,y) == (s-1,1)
        || (x,y) == (s-1,s-2)  || (x,y) == (s-2,s-2) || (x,y) == (s-2,s-1) =
           if colour1 == colour2
-            then (yusukiEvaluate (Board s 0 xs) colour2) - 400
-            else (yusukiEvaluate (Board s 0 xs) colour2) + 50
+            then yusukiEvaluate (Board s 0 xs) colour2 - 400
+            else yusukiEvaluate (Board s 0 xs) colour2 + 50
 
         | x == 0
        || x == s-1
        || y == 0
        || y == s-1 = 
           if colour1 == colour2
-            then (yusukiEvaluate (Board s 0 xs) colour2) + 100
-            else (yusukiEvaluate (Board s 0 xs) colour2) - 100
+            then yusukiEvaluate (Board s 0 xs) colour2 + 100
+            else yusukiEvaluate (Board s 0 xs) colour2 - 100
 
       --Otherwise
-        | colour1 == colour2 = (yusukiEvaluate (Board s 0 xs) colour2) + 1
+        | colour1 == colour2 = yusukiEvaluate (Board s 0 xs) colour2 + 1
         | otherwise          = yusukiEvaluate (Board s 0 xs) colour2
 
 
@@ -459,10 +349,10 @@ hirushoEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
        || (x,y) == (0,s-1) 
        || (x,y) == (s-1,0) 
        || (x,y) == (s-1,s-1) = if colour1 == colour2 
-                                  then (hirushoEvaluate (Board s 0 xs) colour2) + 1000
-                                  else (hirushoEvaluate (Board s 0 xs) colour2) - 1000
+                                  then hirushoEvaluate (Board s 0 xs) colour2 + 1000
+                                  else hirushoEvaluate (Board s 0 xs) colour2 - 1000
 
-        | colour1 == colour2 = (hirushoEvaluate (Board s 0 xs) colour2) + length(checkAvailable (Board s 0 (((x,y), colour1):xs)) (0,0) colour2)
+        | colour1 == colour2 = hirushoEvaluate (Board s 0 xs) colour2 + length(checkAvailable (Board s 0 (((x,y), colour1):xs)) (0,0) colour2)
         | otherwise          = hirushoEvaluate (Board s 0 xs) colour2
 
 
@@ -471,7 +361,7 @@ hirushoEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
 undoTurn :: World  -- ^ The world to be reverted to the previuos turn
          -> World  -- ^ returns the world in its previos turn
 undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
-         trace ("Cannot undo further back than current state") w
+         trace "Cannot undo further back than current state" w
 undoTurn w@(World _ _ ((x,y,i,j):xs) bt wt _ _ _ _ _ _ _ _) 
          | bt == Human && wt == Human = trace "Reverted to previous player turn"
            w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
