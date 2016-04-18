@@ -13,7 +13,7 @@ import Debug.Trace
 import Datatype
 
 defaultBoardSize = 8
-startTime = 200000
+startTime = 60000
 
 -- | Changes to the other colour
 other :: Col -> Col

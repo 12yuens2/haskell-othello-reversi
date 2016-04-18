@@ -33,12 +33,13 @@ import AI
 
 main :: IO ()
 main = do 
-        args <- getArgs
-        w <- initWorld args
+	imgs 	<- initPictures
+        args 	<- getArgs
+        w 		<- initWorld args
         playIO  (InWindow "Othello" (1200,800) (10, 10))
                 black
                 10
                 w
-                drawWorldIO
+                (drawWorldIO imgs)
                 handleInputIO
                 updateWorldIO

@@ -14,6 +14,7 @@ import Data.Maybe
 import Board
 import AI
 import Draw
+import Datatype
 
 import Debug.Trace
 
@@ -62,7 +63,7 @@ handleInputIO (EventKey (Char k) Down _ _) w
 handleInputIO (EventKey (Char k) Up _ _) w@(World _ _ _ _ _ _ _ p v _ go _ sk) 
         | k == 'h' && not p && not go                   = return w { showValid = not v }
         | k == 'u' && not p && not go && isNothing sk   = return $ undoTurn w
-        | k == 'p'            && not go && isNothing sk = return w { pause = not p }
+        | k == 'p'            && not go && isNothing sk = return w { isPaused = not p }
         | k == 'r' && not p && isNothing sk             = do args <- getArgs
                                                              initWorld args
         | k == 's' && not p && not go && isNothing sk   = do writeFile "save.othello" (encode w)

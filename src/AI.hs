@@ -6,6 +6,7 @@ import Network.Socket.ByteString.Lazy
 import Data.Binary
 
 import Board
+import Datatype
 
 import Debug.Trace
 
