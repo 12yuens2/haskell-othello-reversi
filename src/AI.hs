@@ -73,7 +73,7 @@ childrenList :: Int                     -- ^ Offset from maximum depth (0 is max
              -> Col                     -- ^ colour of Ai player to evaluate for
              -> [(Int, Position)]       -- ^ Returns a list of positions (moves) and scores associated with them
 childrenList _ [] _ = []
-childrenList depth ((p,tree):xs) c = ((evaluateChildren depth tree c c), p):(childrenList depth xs c)
+childrenList depth ((p,tree):xs) c = (evaluateChildren depth tree c c, p):childrenList depth xs c
 
 
 -- | Gets a score for a Gameteree and max depth or otherwise gets min/max of its children
@@ -94,7 +94,7 @@ makeList :: Int                      -- ^ Current depth in tree
          -> [Int]                    -- ^ Returns a list of max/min scores of children
 makeList _ [] _ _= []
 makeList depth ((_,tree):xs) target current 
-                 = (evaluateChildren (depth-1) tree target (other current)):(makeList depth xs target current)
+                 = evaluateChildren (depth-1) tree target (other current):makeList depth xs target current
 
 -- | Gets minimum from score list to choose opponent's move, 
 -- assumes that opponent having no moves is very good
@@ -119,19 +119,19 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
     | (not r && gameOver b) || btime <= 0 || wtime <= 0 = return w {gameIsOver = True}
     | not (r || validMovesAvailable b c) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
                                            $ return w {board = b{passes = passes b + 1}, turn = other c}
-    | p || (r && sk == Nothing) || (sk /= Nothing && (sd && c == Black || not sd && c == White)) = return w
+    | p || (r && isNothing sk) || (isJust sk && (sd && c == Black || not sd && c == White)) = return w
     | isJust sk = 
         do let s = fromJust sk
            inputByteString <- recv s 65536
-           let b' = decode (inputByteString)
+           let b' = decode inputByteString
            return $ w {board = b', 
-                       turn = (other c), 
-                       chooseStart = (length (pieces b') < 4)
+                       turn = other c, 
+                       chooseStart = length (pieces b') < 4
                       }
     | c == Black && bt == Human = return w {bTimer = btime - 10}
     | c == White && wt == Human = return w {wTimer = wtime - 10}
     | otherwise = let
         tree = buildTree generateMoves b c
         nextMove = yusukiMove 5 tree in case makeMove b nextMove c of
-                                  Nothing -> error("not possible moves not implemented")
+                                  Nothing -> error "not possible moves not implemented"
                                   Just b' -> return $ w {board = b', turn = other c}
