@@ -186,7 +186,7 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
     -- 
     | p || (r && isNothing sk) || (isJust sk && (sd && c == Black || not sd && c == White)) = return w
 
-    -- | If networked, wait to get the new board from the socket
+    -- If networked, wait to get the new board from the socket
     | isJust sk = 
         do let s = fromJust sk
            inputByteString <- recv s 65536
