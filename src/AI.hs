@@ -165,7 +165,7 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
 
     -- Skip a player's turn and increment passes if there are no valid moves for a player
     | not (r || length (checkAvailable c b) /= 0) = trace ("No valid moves for " ++ show c ++ " so their turn is skipped") 
-                                           $ return w {board = b{passes = passes b + 1}, turn = other c}
+                                                    $ return w {board = b{passes = passes b + 1}, turn = other c}
     
     -- 
     | p || (r && isNothing sk) || (isJust sk && (sd && c == Black || not sd && c == White)) = return w
@@ -198,5 +198,7 @@ updateWorldIO _ w@(World b c sts bt wt btime wtime p v r go sd sk)
                                   Just b' -> return $ w {board = b', turn = other c}
 
 
-chooseRandom :: [a] -> IO a
+-- | Chooses a random position in a list
+chooseRandom :: [a]   -- ^ List to get random value from 
+             -> IO a  -- ^ Returns random value from list
 chooseRandom xs = liftM (xs !!) (randomRIO (0, length xs - 1))
