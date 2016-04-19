@@ -80,7 +80,11 @@ squarePosY :: Int   -- ^ Size of the grid
 squarePosY s y = gridPos - pieceSize s - (rectSize s * y) 
 
 
-hintFunc :: Bool -> Col -> (Board -> [Position])
+-- | Gets a function to use for generating list of valid moves for 
+-- displaying hints
+hintFunc :: Bool  -- ^ True if starting positions are being placed (reversi mode)
+         -> Col   -- ^ The colour the player who's turn it is
+         -> (Board -> [Position])  -- ^ Function to use for generating valid moves
 hintFunc True _ = checkStart
 hintFunc _    c = checkAvailable c
 
