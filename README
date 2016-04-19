@@ -64,6 +64,8 @@ There are various controls to change options in game:
     * 's' - save the game to "save.othello", disabled for network play
     * 'l' - load the game from "save.othello", disabled for network play
 
+Pressing the 'Esc' key will exit the game. 
+
 
 
 
