@@ -27,7 +27,7 @@ Note: for each option if it is applied more than once  with different settings
 -server                 sets this game as the server, the game will only launch 
                         once a connection from a client has been made, the 
                         server can set different game options and will send
-                        it's world to the client at the start of the game
+                        it's world to the client at the start of the game,
                         the server will ignore any ai arguments
 
 -client [HOSTNAME]      sets this game as the client, a hostname must be

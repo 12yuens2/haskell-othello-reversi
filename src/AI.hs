@@ -104,8 +104,8 @@ yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
        || (x,y) == (0,s-1) 
        || (x,y) == (s-1,0) 
        || (x,y) == (s-1,s-1) = if colour1 == colour2 
-                                  then yusukiEvaluate (Board s 0 xs) colour2 + 1000
-                                  else yusukiEvaluate (Board s 0 xs) colour2 - 1000
+                                  then yusukiEvaluate (Board s 0 xs) colour2 + 100
+                                  else yusukiEvaluate (Board s 0 xs) colour2 - 100
 
        --Give lower values for positions next to corners
         | (x,y) == (1,0)      || (x,y) == (1,1)     || (x,y) == (0,1)
@@ -113,8 +113,8 @@ yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
        || (x,y) == (s-2,0)    || (x,y) == (s-2,1)   || (x,y) == (s-1,1)
        || (x,y) == (s-1,s-2)  || (x,y) == (s-2,s-2) || (x,y) == (s-2,s-1) =
           if colour1 == colour2
-            then yusukiEvaluate (Board s 0 xs) colour2 - 400
-            else yusukiEvaluate (Board s 0 xs) colour2 + 50
+            then yusukiEvaluate (Board s 0 xs) colour2 - 40
+            else yusukiEvaluate (Board s 0 xs) colour2 + 5
 
       -- Give good values for sides
         | x == 0
@@ -122,28 +122,12 @@ yusukiEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
        || y == 0
        || y == s-1 = 
           if colour1 == colour2
-            then yusukiEvaluate (Board s 0 xs) colour2 + 100
-            else yusukiEvaluate (Board s 0 xs) colour2 - 100
+            then yusukiEvaluate (Board s 0 xs) colour2 + 15
+            else yusukiEvaluate (Board s 0 xs) colour2 - 15
 
       --Otherwise
         | colour1 == colour2 = yusukiEvaluate (Board s 0 xs) colour2 + 1
         | otherwise          = yusukiEvaluate (Board s 0 xs) colour2
-
-
-
-hirushoEvaluate :: Board -> Col -> Int
-hirushoEvaluate Board {pieces = []}                _       = 0
-hirushoEvaluate Board {pieces = (((x,y), colour1):xs), size = s} colour2
-      -- Giver higher values for corners
-        | (x,y) == (0,0) 
-       || (x,y) == (0,s-1) 
-       || (x,y) == (s-1,0) 
-       || (x,y) == (s-1,s-1) = if colour1 == colour2 
-                                  then hirushoEvaluate (Board s 0 xs) colour2 + 1000
-                                  else hirushoEvaluate (Board s 0 xs) colour2 - 1000
-
-        | colour1 == colour2 = hirushoEvaluate (Board s 0 xs) colour2 + length(checkAvailable colour2 (Board s 0 (((x,y), colour1):xs)))
-        | otherwise          = hirushoEvaluate (Board s 0 xs) colour2
 
 
 -- | creates a list of scores for each GameTree in a list of next moves

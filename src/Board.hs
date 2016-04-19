@@ -279,7 +279,8 @@ undoTurn :: World  -- ^ The world to be reverted to the previuos turn
 undoTurn w@(World _ _ [] _ _ _ _ _ _ _ _ _ _) = 
          trace "Cannot undo further back than current state" w
 
--- Revert to previous human player turn otherwise
-undoTurn w@(World _ _ ((x,y,i,j):xs) _ ciw_wt _ _ _ _ _ _ _ _) = 
+-- Revert to previous human player turn otherwise, set gameIsOver to false in 
+-- case of reverting from game over
+undoTurn w@(World _ _ ((x,y,i,j):xs) _ _ _ _ _ _ _ _ _ _) = 
          trace "Reverted to previous player turn"
-         w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j}
+         w {board = x, turn = y, stateList = xs, bTimer = i, wTimer = j, gameIsOver = False}

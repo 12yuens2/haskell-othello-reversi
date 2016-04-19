@@ -69,22 +69,25 @@ handleInputIO (EventKey (Char k) Up _ _) w@(World _ _ _ _ _ _ _ p v _ go _ sk)
         -- Show hints if the game is not paused and not over
         | k == 'h' && not p && not go                   = return w { showValid = not v }
 
-        -- Undo moves if the game is not paused, not over and not networked
-        | k == 'u' && not p && not go && isNothing sk   = return $ undoTurn w
+        -- Undo moves if the game is not paused and not networked
+        | k == 'u' && not p && isNothing sk   = return $ undoTurn w
 
         -- Pause the game
         | k == 'p'          && not go && isNothing sk   = return w { isPaused = not p }
 
         -- Restart the game
-        | k == 'r' && not p           && isNothing sk   = do args <- getArgs
+        | k == 'r' && not p           && isNothing sk   = trace "Restarting game" $
+                                                          do args <- getArgs
                                                              initWorld args
 
         -- Save the game to "save.othello"
-        | k == 's' && not p && not go && isNothing sk   = do writeFile "save.othello" (encode w)
+        | k == 's' && not p && not go && isNothing sk   = trace "Saving game state" $
+                                                          do writeFile "save.othello" (encode w)
                                                              return w
 
         -- Load the game from "save.othello"
-        | k == 'l' && not p && not go && isNothing sk   = do fromFile <- readFile "save.othello"
+        | k == 'l' && not p && isNothing sk   = trace "Loading saved game state" $
+                                                          do fromFile <- readFile "save.othello"
                                                              return $ decode fromFile
 
         -- Unrecognised keys
