@@ -86,7 +86,7 @@ handleInputIO (EventKey (Char k) Up _ _) w@(World _ _ _ _ _ _ _ p v _ go _ sk)
                                                              return w
 
         -- Load the game from "save.othello"
-        | k == 'l' && not p && isNothing sk   = trace "Loading saved game state" $
+        | k == 'l' && not p           && isNothing sk   = trace "Loading saved game state" $
                                                           do fromFile <- readFile "save.othello"
                                                              return $ decode fromFile
 
