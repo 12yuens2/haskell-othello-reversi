@@ -8,8 +8,8 @@ install gloss-1.8.1.2 as that is the version of gloss this game is built on.
 A full list of dependencies can be found in the file Othello.cabal. Install any 
 missing libraries using the command cabal install <library>. Then, to run the 
 game: 
-- `cabal configure` in the Code/ directory to configure
-- `cabal build` in the Code/ directory to build an executeable, which can be found in `dist/build/othello/`
+- `cabal configure` in the `code/` directory to configure
+- `cabal build` in the `code/` directory to build an executeable, which can be found in `dist/build/othello/`
 - Run the executable `othello` in `dist/build/othello` to play the game
 
 
@@ -62,7 +62,7 @@ Pressing the 'Esc' key will exit the game.
 
 
 ## Documentation
-The documentation is included in HTML format in the documentation/ directory. 
+The documentation is included in HTML format in the `documentation/` directory. 
 It is generated from Haddock version 2.13.2, (c) Simon Marlow 2006.
 
 
