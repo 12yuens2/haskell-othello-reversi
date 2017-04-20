@@ -1,5 +1,7 @@
 # Othello Game
+This is an implementation of [Othello](https://en.wikipedia.org/wiki/Reversi) written in Haskell. The game currently supports an AI player and the ability to play over the network against another player. 
 
+![alt text](https://github.com/dR3am5t0rM/haskell-othello-reversi/blob/master/report/screenshots/validMove.png)
 
 ## Running the game
 In order to compile this, you will need to be working in Linux. You will first 
@@ -50,11 +52,11 @@ Starts the game with hints on.
 Use the mouse to click on positions to make moves.
 
 There are various controls to change options in game:
-- 'h' - toggles hints on and off
-- 'u' - undo a move, disabled for network play
-- 'p' - pause the game, disabled for network play
-- 's' - save the game to `save.othello`, disabled for network play
-- 'l' - load the game from `save.othello`, disabled for network play
+- `h` - toggles hints on and off
+- `u` - undo a move, disabled for network play
+- `p` - pause the game, disabled for network play
+- `s` - save the game to `save.othello`, disabled for network play
+- `l` - load the game from `save.othello`, disabled for network play
 
 Pressing the 'Esc' key will exit the game. 
 
